@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="options.css" />
+    <title>Deprompt Extension Settings</title>
+  </head>
+  <body>
+    <div style="display: flex">
+      <a class="dashboardLink" style="" href="dashboard.html">Back to Dashboard</a>
+      <h1 style="margin-left: 20%; width: 80%">Deprompt Settings</h1>
+    </div>
+    <div style="display: flex">
+      <div class="sideBarLinkContainer">
+        <a class="sideBarLink" href="#timeLimitOptions">Time Limits & Blocks</a>
+        <a class="sideBarLink" href="#notificationOptions">Notifications</a>
+        <a class="sideBarLink" href="#formattingOptions">Formatting</a>
+        <a class="sideBarLink" href="#providerOptions">Providers</a>
+        <a class="sideBarLink" href="#dataSection">Data Management</a>
+      </div>
+
+      <div style="margin-left: 20%; width: 80%">
+        <!-- Time Limits -->
+        <div class="section card" id="timeLimitOptions">
+          <h3>Time Limits & Blocks</h3>
+          <div id="timeLimitSubOptions">
+            <div id="timeLimitSection">
+              <h4>Daily Time Limit</h4>
+              <p>Cap total AI usage per day.</p>
+
+              <label class="inline-option">
+                <input type="checkbox" id="timeLimitToggle" />
+                Enforce a daily limit
+              </label>
+
+              <div class="row-input">
+                <span>Limit</span>
+                <input type="number" id="timeLimitInput" name="timeLimit" min="1" step="1" />
+                <span>minutes</span>
+              </div>
+            </div>
+
+            <div class="block-times" id="fixedTimeSection">
+              <h4>Fixed Block Times</h4>
+              <div id="blockTimeContainer"></div>
+
+              <div class="time-add">
+                <input type="time" id="blockStart" />
+                <span>to</span>
+                <input type="time" id="blockEnd" />
+                <button id="addBlockBtn" type="button" class="button primary">Add</button>
+              </div>
+
+              <div class="field-error" id="timeError"></div>
+              <div class="field-hint" id="blockingModeHint"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="section card" id="notificationOptions">
+          <h3>Notifications</h3>
+          <p>Choose when Deprompt should nudge you.</p>
+
+          <div style="display: flex">
+            <div class="input-column">
+              <label class="inline-option">
+                <input type="checkbox" id="dailyNotifyToggle" />
+                Notify on daily usage
+              </label>
+
+              <div class="row-input">
+                <span>After</span>
+                <input type="number" id="dailyNotifyMinutes" name="dailyNotifyMinutes" min="1" step="1" />
+                <span>minutes today</span>
+              </div>
+            </div>
+
+            <div class="input-column">
+              <label class="inline-option">
+                <input type="checkbox" id="continuousNotifyToggle" />
+                Notify on continuous usage
+              </label>
+
+              <div class="row-input">
+                <span>After</span>
+                <input type="number" id="continuousNotifyMinutes" name="continuousNotifyMinutes" min="1" step="1" />
+                <span>minutes in a single session</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formatting -->
+        <div class="section card" id="formattingOptions">
+          <h3>Formatting</h3>
+          <p>Control how durations are displayed.</p>
+
+          <label class="inline-option">
+            <input type="checkbox" id="showSecondsToggle" />
+            Show seconds in time values
+          </label>
+        </div>
+
+        <!-- Providers -->
+        <div class="section card" id="providerOptions">
+          <h3>Providers</h3>
+          <p>Select which AI providers to track and control.</p>
+          <div id="providerList"></div>
+        </div>
+
+        <!-- Data -->
+        <div class="section card" id="dataSection">
+          <h3>Export Data</h3>
+          <p>Download your usage data as a JSON file.</p>
+          <button id="exportDataBtn" class="button primary">Export Data</button>
+
+          <h3>Import Data</h3>
+          <p>Import data from another device. This will overwrite your current data.</p>
+          <button id="importDataBtn" class="button primary">Import Data</button>
+          <input id="fileInput" type="file" accept="application/json" hidden />
+          <h3>Reset Data</h3>
+          <p>Clear all usage data and settings.</p>
+          <button id="resetDataBtn" class="button danger">Reset All Data</button>
+
+          <div id="confirmDialog" hidden>
+            <p>Are you sure you want to delete all extension data? This cannot be undone.</p>
+            <div>
+              <button class="button primary" id="cancelReset">Cancel</button>
+              <button class="button danger" id="confirmReset">Delete</button>
+            </div>
+          </div>
+        </div>
+
+        <script type="module" src="settingsHandler.js"></script>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+{
+  "manifest_version": 3,
+  "name": "Deprompt",
+  "description": "A simple and minimal browser extension to help you grow conscious and stay mindful of your AI usage.",
+  "version": "1.0.0",
+  "permissions": ["tabs", "storage", "alarms", "scripting", "downloads"],
+  "host_permissions": [
+    "*://chat.openai.com/*",
+    "*://chatgpt.com/*",
+    "*://*.claude.ai/*",
+    "*://gemini.google.com/*",
+    "*://copilot.microsoft.com/*",
+    "*://*.poe.com/*",
+    "*://*.perplexity.ai/*",
+    "*://*.pi.ai/*",
+    "*://*.reka.ai/*",
+    "*://chat.mistral.ai/*",
+    "*://*.grok.com/*",
+    "*://chat.qwen.ai/*",
+    "*://*.meta.ai/*"
+  ],
+  "background": {
+    "service_worker": "backgroundWorker.js",
+    "scripts": ["backgroundWorker.js"],
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html"
+  },
+  "icons": {
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_title": "Deprompt",
+    "default_icon": {
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    },
+    "default_popup": "./in-page/popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "in-page/blocked_notification.html",
+        "in-page/blockedNotification.js",
+        "in-page/blockedNotification.css",
+        "in-page/reminder.html",
+        "in-page/reminder.js",
+        "in-page/reminder.css"
+      ],
+      "matches": [
+        "*://chat.openai.com/*",
+        "*://chatgpt.com/*",
+        "*://*.claude.ai/*",
+        "*://gemini.google.com/*",
+        "*://copilot.microsoft.com/*",
+        "*://*.poe.com/*",
+        "*://*.perplexity.ai/*",
+        "*://*.pi.ai/*",
+        "*://*.reka.ai/*",
+        "*://chat.mistral.ai/*",
+        "*://*.grok.com/*",
+        "*://chat.qwen.ai/*",
+        "*://*.meta.ai/*"
+      ]
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "deprompt@timknappe.dev",
+      "strict_min_version": "109.0"
+    }
+  }
+}
