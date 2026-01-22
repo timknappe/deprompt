@@ -9,20 +9,21 @@ import {
   setButtonBlock,
 } from "../helpers.js";
 import { getTodayUsage, getWeeklyUsage, isSnoozed, setBlockToggle, setSnooze } from "../storageManager.js";
-import type { UsageTime } from "../types.js";
-import dayjs from "dayjs";
 
 const debugLog = (...args: unknown[]) => console.log("[Deprompt-debug][popup]", ...args);
 
-let totalMsDaily = await getTodayUsage(true);
+let totalMsDaily = 0;
+let totalMsWeekly = 0;
 let intervalGlobal: number | null = null;
 
-const dailyTime = await formatTime(totalMsDaily);
-document.getElementById("usage-today")!.textContent = await renderTime(dailyTime);
+async function refreshTotals() {
+  totalMsDaily = await getTodayUsage(true);
+  totalMsWeekly = await getWeeklyUsage(true);
+  document.getElementById("usage-today")!.textContent = await renderTime(formatTime(totalMsDaily));
+  document.getElementById("usage-week")!.textContent = await renderTime(formatTime(totalMsWeekly));
+}
 
-const totalMsWeekly: number = await getWeeklyUsage();
-const weeklyTime: UsageTime = await formatTime(totalMsWeekly);
-document.getElementById("usage-week")!.textContent = await renderTime(weeklyTime);
+await refreshTotals();
 
 document.getElementById("until_block")!.textContent = await getTimeTillNextFixedBlocker();
 
@@ -92,16 +93,14 @@ snoozeButton.addEventListener("click", async () => {
   }
 });
 
-function incrementWhileDisplayed(totalMsDaily: number, totalMsWeekly: number) {
-  let interval = setInterval(async () => {
+function incrementWhileDisplayed() {
+  return window.setInterval(async () => {
     totalMsDaily += 1000;
     document.getElementById("usage-today")!.textContent = await renderTime(formatTime(totalMsDaily));
 
     totalMsWeekly += 1000;
     document.getElementById("usage-week")!.textContent = await renderTime(formatTime(totalMsWeekly));
   }, 1000);
-
-  return interval;
 }
 
 function stopInterval() {
@@ -114,7 +113,7 @@ function stopInterval() {
 
 function startInterval() {
   stopInterval();
-  intervalGlobal = incrementWhileDisplayed(totalMsDaily, totalMsWeekly);
+  intervalGlobal = incrementWhileDisplayed();
   debugLog("startInterval");
 }
 
@@ -132,6 +131,7 @@ async function ensureIntervalForActiveTab() {
   const provider = await resolveProvider(tab.url);
   if (provider) {
     if (intervalGlobal === null) {
+      await refreshTotals();
       startInterval();
     }
   } else {
@@ -146,39 +146,23 @@ async function ensureIntervalForActiveTab() {
 }
 
 browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tabInfo) => {
+  await ensureIntervalForActiveTab();
   const currentTab = tabInfo ?? (await browser.tabs.get(tabId));
-  if (currentTab.url) {
-    const provider = await resolveProvider(currentTab.url);
-    if (!provider) {
-      stopInterval();
-    } else if (intervalGlobal === null) {
-      startInterval();
-    }
-    debugLog("popup tabs.onUpdated", {
-      tabId,
-      url: currentTab.url,
-      provider,
-      intervalRunning: intervalGlobal !== null,
-    });
-  }
+  debugLog("popup tabs.onUpdated", {
+    tabId,
+    url: currentTab.url,
+    intervalRunning: intervalGlobal !== null,
+  });
 });
 
 browser.tabs.onActivated.addListener(async ({ tabId }) => {
+  await ensureIntervalForActiveTab();
   const activeTab = await browser.tabs.get(tabId);
-  if (activeTab.url) {
-    const provider = await resolveProvider(activeTab.url);
-    if (!provider) {
-      stopInterval();
-    } else if (intervalGlobal === null) {
-      startInterval();
-    }
-    debugLog("popup tabs.onActivated", {
-      tabId,
-      url: activeTab.url,
-      provider,
-      intervalRunning: intervalGlobal !== null,
-    });
-  }
+  debugLog("popup tabs.onActivated", {
+    tabId,
+    url: activeTab.url,
+    intervalRunning: intervalGlobal !== null,
+  });
 });
 
 browser.windows.onFocusChanged.addListener(async (windowId) => {

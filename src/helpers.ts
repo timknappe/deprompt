@@ -154,11 +154,8 @@ export async function isBlocked(addActiveTime: boolean = false): Promise<boolean
 
   if (await getManualBlock()) return true;
 
-  let remainingUsage = await getRemainingUsageTime();
+  const remainingUsage = await getRemainingUsageTime(addActiveTime);
   if (remainingUsage !== null) {
-    if (addActiveTime) {
-      remainingUsage -= await getCurrentProviderDuration();
-    }
     return remainingUsage <= 0 ? true : false;
   }
   return false;
@@ -182,11 +179,8 @@ export async function getCurrentBlockType(addActiveTime: boolean = false): Promi
 
   if (await getManualBlock()) return "ManualBlock";
 
-  let remainingUsage = await getRemainingUsageTime();
+  const remainingUsage = await getRemainingUsageTime(addActiveTime);
   if (remainingUsage !== null) {
-    if (addActiveTime) {
-      remainingUsage -= await getCurrentProviderDuration();
-    }
     return remainingUsage <= 0 ? "TimeLimit" : null;
   }
   return null;
@@ -202,9 +196,10 @@ export async function getRemainingUsageTime(addActiveTime: boolean = false): Pro
   if (maximumUsage === null) {
     return null;
   }
-  return addActiveTime
-    ? maximumUsage - ((await getCurrentProviderDuration()) + (await getTodayUsage()))
-    : maximumUsage - (await getTodayUsage());
+  if (addActiveTime) {
+    return maximumUsage - (await getTodayUsage(true));
+  }
+  return maximumUsage - (await getTodayUsage());
 }
 
 export async function scheduleWindowUI(): Promise<WindowUiNotifications> {

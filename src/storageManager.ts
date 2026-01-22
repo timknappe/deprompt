@@ -323,8 +323,8 @@ export async function getActiveTrackedPlatforms(): Promise<Partial<typeof TARGET
   const providers = await getProviderSettings();
   return Object.fromEntries(
     (Object.entries(TARGET_DOMAINS) as [ProviderId, (typeof TARGET_DOMAINS)[ProviderId]][]).filter(
-      ([provider]) => providers[provider]
-    )
+      ([provider]) => providers[provider],
+    ),
   );
 }
 
@@ -371,13 +371,14 @@ export async function getActiveTrackedPlatformUsage(viewType?: string): Promise<
 
 export async function getTodayUsage(addActiveTime: boolean = false): Promise<number> {
   return addActiveTime
-    ? (await sumForAllProviders(`daily:${normalizeDateKey(Date.now())}`)) + (await getCurrentProviderDuration())
+    ? (await sumForAllProviders(`daily:${normalizeDateKey(Date.now())}`)) +
+        (await getCurrentProviderUnpersistedDuration())
     : await sumForAllProviders(`daily:${normalizeDateKey(Date.now())}`);
 }
 
 export async function getWeeklyUsage(addActiveTime: boolean = false): Promise<number> {
   return addActiveTime
-    ? (await sumForAllProviders(`week:${weekStartKey(Date.now())}`)) + (await getCurrentProviderDuration())
+    ? (await sumForAllProviders(`week:${weekStartKey(Date.now())}`)) + (await getCurrentProviderUnpersistedDuration())
     : sumForAllProviders(`week:${weekStartKey(Date.now())}`);
 }
 
@@ -586,7 +587,7 @@ export async function getFixedBlockDurations(): Promise<string[]> {
 
 export async function checkShowSeconds(): Promise<boolean> {
   const { ["settings:formatting:showSeconds"]: showSeconds = false } = await browser.storage.sync.get(
-    "settings:formatting:showSeconds"
+    "settings:formatting:showSeconds",
   );
 
   return showSeconds as boolean;
@@ -714,9 +715,8 @@ export async function checkLastReminderSent(key: string): Promise<number> {
 
 // returns the start time of the current provider as a timestamp
 async function getCurrentProviderStart() {
-  const { ["meta:runtime:start"]: start }: { ["meta:runtime:start"]?: number } = await browser.storage.local.get(
-    "meta:runtime:start"
-  );
+  const { ["meta:runtime:start"]: start }: { ["meta:runtime:start"]?: number } =
+    await browser.storage.local.get("meta:runtime:start");
 
   return start as number;
 }
@@ -725,6 +725,39 @@ export async function getCurrentProviderDuration() {
   const providerStart = await getCurrentProviderStart();
   if (providerStart === undefined || providerStart === null) return 0;
   return Date.now() - providerStart;
+}
+
+/**
+ * Returns the duration since the last tick for the current session.
+ * This avoids double-counting time that got already flushed.
+ */
+export async function getCurrentProviderUnpersistedDuration(): Promise<number> {
+  const {
+    ["meta:runtime:provider"]: provider,
+    ["meta:runtime:start"]: start,
+    ["meta:runtime:lastPersisted"]: lastPersisted,
+    lastHeartbeat,
+  }: {
+    ["meta:runtime:provider"]?: string;
+    ["meta:runtime:start"]?: number;
+    ["meta:runtime:lastPersisted"]?: number;
+    lastHeartbeat?: number;
+  } = await browser.storage.local.get([
+    "meta:runtime:provider",
+    "meta:runtime:start",
+    "meta:runtime:lastPersisted",
+    "lastHeartbeat",
+  ]);
+
+  if (!provider || typeof start !== "number") return 0;
+
+  const now = Date.now() - (Date.now() % 1000);
+  const baseline = typeof lastPersisted === "number" && lastPersisted >= start ? lastPersisted : start;
+  const heartbeatOk = typeof lastHeartbeat === "number" && lastHeartbeat >= start;
+  const cappedNow = heartbeatOk ? Math.min(now, lastHeartbeat!) : now;
+  const delta = cappedNow - baseline;
+
+  return delta > 0 ? delta : 0;
 }
 
 /**
