@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deprompt quick settings</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body id="popup-container">
+    <div class="header">
+      <div class="subheader">
+        <img style="width: 40px; height: 40px" src="../assets/icon128.png" alt="Logo" />
+        <h2>Deprompt</h2>
+      </div>
+      <a href="../options.html" target="_blank" rel="noopener noreferrer" id="settings">
+        <img src="../../assets/settings.png" alt="Settings" />
+      </a>
+    </div>
+
+    <div class="card">
+      <h3 style="margin: 0 0 8px 0">Today's usage</h3>
+      <p id="usage-today">Loading...</p>
+
+      <!-- Im still debating whether to keep this in, as we can only semi reliably track it, and one "session" isnt really clear -->
+      <!-- <h3>Today's Sessions</h3>
+      <p id="sessions-today">Loading...</p> -->
+
+      <h3>This Week's usage</h3>
+      <p id="usage-week">Loading...</p>
+
+      <h3>Minutes until block</h3>
+      <p id="until_block">Loading...</p>
+    </div>
+
+    <a id="open" target="_blank" rel="noopener noreferrer" href="../dashboard.html" class="button secondary"
+      >Open Dashboard</a
+    >
+
+    <button id="snoozeButton" class="button secondary alt-secondary"></button>
+
+    <button id="blocker" class="button primary">Activate</button>
+
+    <script type="module" src="popup.ts"></script>
+  </body>
+</html>

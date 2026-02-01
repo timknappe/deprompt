@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deprompt Dashboard</title>
+  </head>
+  <body>
+    <!-- Add radio buttons for daily, weekly, monthly, yearly, all time | upper bar -->
+    <header id="header" class="card">
+      <div id="radio-area">
+        <!-- <label class="radio-label"
+          ><input type="radio" name="viewType" value="daily" />Daily</label
+        > -->
+        <label class="radio-label"
+          ><input type="radio" name="viewType" value="weekly" checked /><span>Weekly</span></label
+        >
+        <label class="radio-label"><input type="radio" name="viewType" value="monthly" /><span>Monthly</span></label>
+        <label class="radio-label"><input type="radio" name="viewType" value="yearly" /><span>Yearly</span></label>
+        <label class="radio-label"><input type="radio" name="viewType" value="alltime" /><span>All Time</span></label>
+      </div>
+
+      <a href="options.html" class="settingsField">
+        <img src="../assets/settings.png" class="settingsIcon" />
+        <p class="settingsText">Settings</p>
+      </a>
+    </header>
+
+    <main>
+      <!-- always show current day and all time | No chart just numbers 50% left + Block now button -->
+      <section id="stats-section" class="card two-column">
+        <div class="left">
+          <div class="metric">
+            <h3>Today's Usage</h3>
+            <p id="today-usage"></p>
+          </div>
+          <div class="metric">
+            <h3>All-Time Usage</h3>
+            <p id="alltime-usage">0h 0m</p>
+          </div>
+        </div>
+        <div class="right">
+          <h3>Quick actions</h3>
+          <div id="button-group">
+            <button id="dashboard-block" class="button primary">Block Now</button>
+            <button id="dashboard-snooze" class="button primary"></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hour, day, week, month, year breakdown | full width bar chart -->
+      <section id="breakdown-section" class="card two-column">
+        <div class="left">
+          <h3>Usage Breakdown</h3>
+          <div id="barChart" class="chart"></div>
+        </div>
+        <!-- Percentage between providers, | pie chart 50% right -->
+        <div class="right">
+          <h3>Provider Distribution</h3>
+          <div id="pieChart" class="chart"></div>
+        </div>
+      </section>
+    </main>
+    <div>
+      <a href="https://github.com/timknappe/deprompt">Contribute on Github</a>
+      <a href="https://timknappe.dev/archive/societal-impact-cognitive-offloading/">Why</a>
+    </div>
+    <script type="module" src="dashboard.js"></script>
+  </body>
+</html>

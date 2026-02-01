@@ -1,0 +1,142 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
+::selection {
+  background: #7c4dff;
+  color: #ffffff;
+}
+
+body {
+  background-color: #1e1e1e;
+  color: #ddd;
+  font-family: "Inter", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+main {
+  width: 480px;
+  max-width: 90%;
+  background-color: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 30px 32px 40px;
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.3s ease;
+}
+
+h1 {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+  color: #c8a6ff;
+}
+
+h2 {
+  font-size: 1.3rem;
+  margin-top: 0;
+  color: #bbaaff;
+}
+
+.description {
+  font-size: 0.95rem;
+  color: #aaa;
+  margin-bottom: 24px;
+}
+
+.radio-group,
+#alt-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.radio-option,
+.alt-radio-option {
+  display: flex;
+  align-items: center;
+  background: #242424;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: border 0.15s, background 0.15s;
+}
+
+.radio-option:hover,
+.alt-radio-option:hover {
+  border-color: #7c4dff;
+  background: #2f2f2f;
+}
+
+.radio-option input,
+.alt-radio-option input {
+  margin-right: 10px;
+  accent-color: #7c4dff;
+}
+
+.sub-option {
+  margin-left: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #bbb;
+}
+
+.sub-option input {
+  width: 80px;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 4px 6px;
+  color: #ddd;
+}
+
+.button-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+}
+
+button {
+  background-color: #7c4dff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+button:hover {
+  background-color: #8e63ff;
+  transform: translateY(-1px);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.finished-image {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+  -webkit-user-drag: none;
+  user-select: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+}

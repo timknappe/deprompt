@@ -1,0 +1,199 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
+::selection {
+  background: #7c4dff;
+  color: #ffffff;
+}
+
+body {
+  background-color: #1e1e1e;
+  color: #ddd;
+  font-family: "Inter", sans-serif;
+  margin: 0;
+  padding: 40px;
+}
+
+h1 {
+  color: #b3aaff;
+  text-align: center;
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+
+.card {
+  background: rgba(40, 40, 40, 0.85);
+  border: 1px solid rgba(80, 80, 80, 0.6);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+h3,
+h4 {
+  color: #ccc;
+  margin-bottom: 10px;
+}
+
+p {
+  color: #aaa;
+}
+
+.inline-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: #ccc;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: #7c4dff;
+  cursor: pointer;
+}
+
+.input-column {
+  width: 50%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.row-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #aaa;
+}
+
+input[type="number"],
+input[type="time"] {
+  background: #2c2c2c;
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+input:focus {
+  outline: none;
+  border-color: #7c4dff;
+}
+
+.button {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.button.primary {
+  background-color: #7c4dff;
+  color: white;
+}
+
+.button.primary:hover {
+  background-color: #906bff;
+}
+
+.remove-btn {
+  background: transparent;
+  color: #d64545;
+  border: 1px solid #d64545;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.remove-btn:hover {
+  background: #d64545;
+  color: #fff;
+}
+
+.field-error {
+  color: #d64545;
+  font-size: 0.9rem;
+}
+
+.field-hint {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.block-time-entry {
+  background: rgba(50, 50, 50, 0.8);
+  border: 1px solid #555;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.button.danger {
+  background-color: #d64545 !important;
+  color: white;
+}
+
+.button.danger:hover {
+  background-color: #e05a5a !important;
+}
+
+.sideBarLinkContainer {
+  display: flex;
+  flex-direction: column;
+  width: 15%;
+  position: fixed;
+  padding: 0.5em;
+}
+
+.dashboardLink {
+  width: 15%;
+  position: fixed;
+  padding: 0.5em;
+  color: white;
+  text-decoration: none;
+  font-size: 1em;
+  margin-bottom: 0.7em;
+}
+
+.dashboardLink:hover {
+  text-decoration: underline;
+}
+
+.sideBarLink {
+  color: white;
+  text-decoration: none;
+  font-size: 1em;
+  margin-bottom: 0.7em;
+}
+
+.focused {
+  border-left: 3px solid #7c4dff !important;
+  padding-left: 3px !important;
+}
+
+.confirmDialog {
+  display: flex;
+  position: fixed;
+  z-index: 100;
+}
+
+#fixedTimeSection {
+  width: 50%;
+}
+
+#timeLimitSection {
+  width: 50%;
+}
+
+#timeLimitSubOptions {
+  display: flex;
+}
