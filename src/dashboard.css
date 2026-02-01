@@ -200,3 +200,24 @@ body {
 #stats-section {
   display: flex;
 }
+
+#footer-links {
+  display: flex;
+  justify-content: center;
+  color: white;
+  align-items: center;
+}
+
+#footer-links a {
+  text-decoration: none;
+  color: white;
+  margin: 0 10px;
+}
+
+#footer-links a:visited {
+  color: white;
+}
+
+#footer-links a:hover {
+  text-decoration: underline;
+}
