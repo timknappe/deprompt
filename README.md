@@ -51,9 +51,11 @@ AI will have a profound impact on how we think and act as a society. I personall
 
 ## Installation
 
-To use Deprompt, please download the latest release from GitHub and load it as an extension in your browser of choice.
+Deprompt is available for download in the Chrome and Firefox Extension Stores.
 
-As of now, there is no official build published in browser extension stores.
+Firefox: https://addons.mozilla.org/en-US/firefox/addon/deprompt/
+
+Chrome: https://chromewebstore.google.com/detail/deprompt/jbgmibplecnfaebelljenjjgggooicio/
 
 ---
 
