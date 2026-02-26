@@ -1,4 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 ::selection {
   background: #7c4dff;
   color: #ffffff;
@@ -66,7 +71,7 @@ body {
 
 .two-column {
   gap: 20px;
-  align-items: center;
+  align-items: stretch;
 }
 
 .metric {
@@ -111,7 +116,8 @@ body {
 }
 
 .chart {
-  height: 80%;
+  height: 260px;
+  min-height: 220px;
   width: 100%;
   background: rgba(30, 30, 30, 0.6);
   border-radius: 8px;
@@ -131,7 +137,7 @@ body {
 #breakdown-section {
   height: 400px;
   min-height: 400px;
-  width: calc(100% - 44px);
+  width: 100%;
   display: flex;
 }
 
@@ -220,4 +226,93 @@ body {
 
 #footer-links a:hover {
   text-decoration: underline;
+}
+
+@media (max-width: 1024px) {
+  body {
+    padding: 20px;
+  }
+
+  .left,
+  .right {
+    width: 100%;
+  }
+
+  #stats-section,
+  #breakdown-section {
+    flex-direction: column;
+  }
+
+  #stats-section {
+    gap: 16px;
+  }
+
+  #breakdown-section {
+    height: auto;
+    min-height: 300px;
+  }
+
+  #breakdown-section .chart {
+    height: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 16px;
+  }
+
+  #header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  #radio-area {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .card {
+    padding: 14px 16px;
+  }
+
+  .metric p {
+    font-size: 18px;
+  }
+
+  #stats-section {
+    gap: 12px;
+  }
+
+  #button-group {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 12px 14px;
+  }
+
+  #radio-area {
+    padding: 6px;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  #button-group {
+    gap: 8px;
+  }
+
+  #footer-links {
+    flex-direction: column;
+    gap: 8px;
+  }
 }

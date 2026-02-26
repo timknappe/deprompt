@@ -18,7 +18,7 @@ function renderNotifications(): void {
     <p class="description">Set reminders for your sessions.</p>
 
       <label class="radio-option">
-        <input type="checkbox" id="notifyDailyToggle" checked>
+        <input type="checkbox" id="notifyDailyToggle">
         <span>Notify (Daily) - remind you after a set time of daily usage</span>
       </label>
       <div class="sub-option">
@@ -27,7 +27,7 @@ function renderNotifications(): void {
         <span>minutes</span>
       </div>
       <label class="radio-option">
-        <input type="checkbox" id="notifyContinuousToggle" checked>
+        <input type="checkbox" id="notifyContinuousToggle">
         <span>Notify (Continuous) - remind you after a set time of continuous usage</span>
       </label>
       <div class="sub-option">
@@ -88,7 +88,7 @@ function renderBlocks(): void {
     <p class="description">Set time limits or and blockers for your sessions.</p>
 
       <label class="radio-option">
-        <input type="checkbox" id="blockToggle" checked>
+        <input type="checkbox" id="blockToggle">
         <span>Daily time limit (minutes) - restrict AI access after a time limit (we will remind you 5 minutes prior)</span>
       </label>
       <div class="sub-option">
