@@ -6,6 +6,88 @@ import type { IndexScope, ProviderId, ProviderSettings, Views } from "./types.js
 
 const debugLog = (...args: unknown[]) => console.log("[Deprompt-debug]", ...args);
 
+const SYNC_FLUSH_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_SYNC_FLUSH_CHUNK_MS = 10 * 60 * 1000;
+
+type RuntimeSessionState = {
+  provider: string;
+  start: number;
+  lastPersisted: number;
+  pendingMs: number;
+  lastSeen: number;
+  lastFlushAt: number;
+};
+
+const RUNTIME_LOCAL_KEYS: string[] = [
+  "meta:runtime:provider",
+  "meta:runtime:start",
+  "meta:runtime:lastPersisted",
+  "meta:runtime:pendingMs",
+  "meta:runtime:lastSeen",
+  "meta:runtime:lastFlushAt",
+];
+
+function nowRoundedToSecond(): number {
+  const now = Date.now();
+  return now - (now % 1000);
+}
+
+async function getRuntimeSessionState(): Promise<RuntimeSessionState | null> {
+  const local = await browser.storage.local.get(RUNTIME_LOCAL_KEYS);
+
+  const providerRaw = local["meta:runtime:provider"];
+  const startRaw = local["meta:runtime:start"];
+  const lastPersistedRaw = local["meta:runtime:lastPersisted"];
+  const pendingMsRaw = local["meta:runtime:pendingMs"];
+  const lastSeenRaw = local["meta:runtime:lastSeen"];
+  const lastFlushAtRaw = local["meta:runtime:lastFlushAt"];
+
+  if (typeof providerRaw !== "string" || typeof startRaw !== "number") {
+    return null;
+  }
+
+  const start = startRaw;
+  const lastPersisted =
+    typeof lastPersistedRaw === "number" && lastPersistedRaw >= start ? lastPersistedRaw : start;
+  const pendingMs = typeof pendingMsRaw === "number" && pendingMsRaw > 0 ? pendingMsRaw : 0;
+  const lastSeen = typeof lastSeenRaw === "number" && lastSeenRaw >= start ? lastSeenRaw : lastPersisted;
+  const lastFlushAt = typeof lastFlushAtRaw === "number" ? lastFlushAtRaw : 0;
+
+  return {
+    provider: providerRaw,
+    start,
+    lastPersisted,
+    pendingMs,
+    lastSeen,
+    lastFlushAt,
+  };
+}
+
+async function accumulateRuntimeDelta(now: number): Promise<RuntimeSessionState | null> {
+  const runtime = await getRuntimeSessionState();
+  if (!runtime) return null;
+
+  const baseline = runtime.lastPersisted >= runtime.start ? runtime.lastPersisted : runtime.start;
+  const delta = Math.max(0, now - baseline);
+
+  const pendingMs = runtime.pendingMs + delta;
+  const lastPersisted = now;
+  const lastSeen = now;
+
+  await browser.storage.local.set({
+    "meta:runtime:lastPersisted": lastPersisted,
+    "meta:runtime:pendingMs": pendingMs,
+    "meta:runtime:lastSeen": lastSeen,
+  });
+
+  return {
+    ...runtime,
+    lastPersisted,
+    pendingMs,
+    lastSeen,
+  };
+}
+
 async function getProviderSettings(): Promise<ProviderSettings> {
   const result = await browser.storage.sync.get("settings:providers");
   const providersRaw = result["settings:providers"];
@@ -159,32 +241,7 @@ async function addToIndexUnique(name: IndexScope, provider: string, entry: strin
  * @returns {Promise<void>} Resolves when all period counters are updated.
  */
 async function addDuration(providerId: string, durationMs: number, ts: number) {
-  const dKey = `daily:${normalizeDateKey(ts)}:${providerId}`;
-  await incSync(dKey, durationMs);
-  await addToIndexUnique("daily", providerId, normalizeDateKey(ts));
-
-  const wStart = weekStartKey(ts);
-  const wKey = `week:${wStart}:${providerId}`;
-  await incSync(wKey, durationMs);
-  await addToIndexUnique("weekly", providerId, wStart);
-
-  const mKey = `month:${monthKey(ts)}:${providerId}`;
-  await incSync(mKey, durationMs);
-  await addToIndexUnique("monthly", providerId, monthKey(ts));
-
-  const yKey = `year:${yearKey(ts)}:${providerId}`;
-  await incSync(yKey, durationMs);
-
-  const aKey = `alltime:${providerId}`;
-  await incSync(aKey, durationMs);
-
-  debugLog("addDuration", {
-    providerId,
-    durationMs,
-    ts,
-    iso: new Date(ts).toISOString(),
-    keysUpdated: [dKey, wKey, mKey, yKey, aKey],
-  });
+  await flushPendingToSync(providerId, durationMs, ts);
 }
 
 /**
@@ -456,11 +513,14 @@ export async function rollover(nowTs: number): Promise<void> {
  * @returns {Promise<void>} Resolves after the timer metadata is written.
  */
 export async function startTimerForProvider(providerId: string): Promise<void> {
-  const now = Date.now() - (Date.now() % 1000);
+  const now = nowRoundedToSecond();
   await browser.storage.local.set({
     "meta:runtime:provider": providerId,
     "meta:runtime:start": now,
     "meta:runtime:lastPersisted": now,
+    "meta:runtime:pendingMs": 0,
+    "meta:runtime:lastSeen": now,
+    "meta:runtime:lastFlushAt": now,
   });
   debugLog("startTimerForProvider", {
     providerId,
@@ -475,33 +535,60 @@ export async function startTimerForProvider(providerId: string): Promise<void> {
  * @param {string} providerId - Provider identifier whose session ended.
  * @returns {Promise<void>} Resolves after duration has been stored and local data cleared.
  */
-export async function receiveEndTime(providerId: string): Promise<void> {
-  const {
-    ["meta:runtime:start"]: start,
-    ["meta:runtime:lastPersisted"]: lastPersisted,
-  }: {
-    ["meta:runtime:start"]?: number;
-    ["meta:runtime:lastPersisted"]?: number;
-  } = await browser.storage.local.get(["meta:runtime:start", "meta:runtime:lastPersisted"]);
-
-  if (!start) return;
-  const end = Date.now() - (Date.now() % 1000);
-  const baseline = typeof lastPersisted === "number" && lastPersisted >= start ? lastPersisted : start;
-  const duration = end - baseline;
-  await browser.storage.local.remove(["meta:runtime:provider", "meta:runtime:start", "meta:runtime:lastPersisted"]);
-  await browser.alarms.clear("syncTimer");
-  if (duration > 0) {
-    await addDuration(providerId, duration, end);
+export async function finalizeSession(reason: string, expectedProviderId?: string): Promise<void> {
+  const now = nowRoundedToSecond();
+  const runtimeAfterAccumulate = await accumulateRuntimeDelta(now);
+  if (!runtimeAfterAccumulate) {
+    await browser.alarms.clear("syncTimer");
+    return;
   }
-  debugLog("receiveEndTime", {
-    providerId,
-    start,
-    lastPersisted,
-    end,
-    isoEnd: new Date(end).toISOString(),
-    baseline,
-    duration,
+
+  if (expectedProviderId && runtimeAfterAccumulate.provider !== expectedProviderId) {
+    debugLog("finalizeSession: provider mismatch, skipping clear", {
+      expectedProviderId,
+      actualProviderId: runtimeAfterAccumulate.provider,
+      reason,
+    });
+    return;
+  }
+
+  let flushSucceeded = true;
+  if (runtimeAfterAccumulate.pendingMs > 0) {
+    try {
+      await flushPendingToSync(runtimeAfterAccumulate.provider, runtimeAfterAccumulate.pendingMs, now);
+      await browser.storage.local.set({
+        "meta:runtime:pendingMs": 0,
+        "meta:runtime:lastFlushAt": now,
+      });
+    } catch (err) {
+      flushSucceeded = false;
+      console.error("Deprompt: finalizeSession flush failed", err);
+      debugLog("finalizeSession flush failed", {
+        providerId: runtimeAfterAccumulate.provider,
+        pendingMs: runtimeAfterAccumulate.pendingMs,
+        reason,
+      });
+    }
+  }
+
+  if (!flushSucceeded) {
+    browser.alarms.create("syncTimer", { periodInMinutes: 1 });
+    return;
+  }
+
+  await browser.storage.local.remove(RUNTIME_LOCAL_KEYS);
+  await browser.alarms.clear("syncTimer");
+  debugLog("finalizeSession", {
+    providerId: runtimeAfterAccumulate.provider,
+    reason,
+    pendingFlushedMs: runtimeAfterAccumulate.pendingMs,
+    endedAt: now,
+    isoEndedAt: new Date(now).toISOString(),
   });
+}
+
+export async function receiveEndTime(providerId: string): Promise<void> {
+  await finalizeSession("receiveEndTime", providerId);
 }
 
 /**
@@ -510,7 +597,6 @@ export async function receiveEndTime(providerId: string): Promise<void> {
  */
 export async function isAliveCheck(): Promise<void> {
   const now = Date.now();
-  await browser.storage.local.set({ lastHeartbeat: now });
   await rollover(now);
 }
 
@@ -518,56 +604,89 @@ export async function isAliveCheck(): Promise<void> {
  * Adds any leftover duration when a tab shuts down without sending an end event.
  * @returns {Promise<void>} Resolves after the remainder was applied.
  */
-export async function addRemainderOnNonGracefulExit(): Promise<void> {
-  const {
-    ["meta:runtime:provider"]: provider,
-    ["meta:runtime:start"]: start,
-    ["meta:runtime:lastPersisted"]: lastPersisted,
-    lastHeartbeat,
-  }: {
-    ["meta:runtime:provider"]?: string;
-    ["meta:runtime:start"]?: number;
-    ["meta:runtime:lastPersisted"]?: number;
-    lastHeartbeat?: number;
-  } = await browser.storage.local.get([
-    "meta:runtime:provider",
-    "meta:runtime:start",
-    "meta:runtime:lastPersisted",
-    "lastHeartbeat",
-  ]);
-
-  if (!provider || !start) {
-    debugLog("addRemainderOnNonGracefulExit skip", {
-      provider,
-      start,
-      lastPersisted,
-      lastHeartbeat,
-    });
-    return;
-  }
-
-  // If we never saw a heartbeat, discard the state to avoid doublecounting on next startup.
-  if (!lastHeartbeat) {
-    await browser.storage.local.remove(["meta:runtime:provider", "meta:runtime:start", "meta:runtime:lastPersisted"]);
+export async function reconcileActiveSessionOnInit(activeProviderId: ProviderId | null): Promise<void> {
+  const runtime = await getRuntimeSessionState();
+  if (!runtime) {
     await browser.alarms.clear("syncTimer");
     return;
   }
 
-  await browser.storage.local.remove(["meta:runtime:provider", "meta:runtime:start", "meta:runtime:lastPersisted"]);
-  await browser.alarms.clear("syncTimer");
-
-  const baseline = typeof lastPersisted === "number" && lastPersisted >= start ? lastPersisted : start;
-  const duration = lastHeartbeat - baseline;
-  if (duration > 0) {
-    await addDuration(provider, duration, lastHeartbeat);
+  if (!activeProviderId || activeProviderId !== runtime.provider) {
+    await finalizeSession("reconcile:init-no-active-or-provider-mismatch");
+    return;
   }
-  debugLog("addRemainderOnNonGracefulExit", {
-    provider,
-    start,
-    lastPersisted,
-    lastHeartbeat,
-    baseline,
-    duration,
+
+  const now = nowRoundedToSecond();
+  await accumulateRuntimeDelta(now);
+  browser.alarms.create("syncTimer", { periodInMinutes: 1 });
+  debugLog("reconcileActiveSessionOnInit: resumed active session", {
+    providerId: runtime.provider,
+    activeProviderId,
+    now,
+    isoNow: new Date(now).toISOString(),
+  });
+}
+
+/**
+ * Flushes pending local duration into sync aggregates without dropping local state on failure.
+ */
+export async function flushPendingToSync(providerId: string, amountMs: number, ts: number): Promise<void> {
+  if (amountMs <= 0) return;
+
+  const day = normalizeDateKey(ts);
+  const week = weekStartKey(ts);
+  const month = monthKey(ts);
+  const year = yearKey(ts);
+
+  const dKey = `daily:${day}:${providerId}`;
+  const wKey = `week:${week}:${providerId}`;
+  const mKey = `month:${month}:${providerId}`;
+  const yKey = `year:${year}:${providerId}`;
+  const aKey = `alltime:${providerId}`;
+  const dailyIdxKey = `index:daily:${providerId}`;
+  const weeklyIdxKey = `index:weekly:${providerId}`;
+  const monthlyIdxKey = `index:monthly:${providerId}`;
+
+  const snapshot = await getSync([dKey, wKey, mKey, yKey, aKey, dailyIdxKey, weeklyIdxKey, monthlyIdxKey]);
+  const updates: Record<string, unknown> = {};
+
+  const addToExisting = (key: string, delta: number) => {
+    const raw = snapshot[key];
+    const current = typeof raw === "number" ? raw : 0;
+    updates[key] = current + delta;
+  };
+
+  addToExisting(dKey, amountMs);
+  addToExisting(wKey, amountMs);
+  addToExisting(mKey, amountMs);
+  addToExisting(yKey, amountMs);
+  addToExisting(aKey, amountMs);
+
+  const dailyIdx = Array.isArray(snapshot[dailyIdxKey]) ? ([...(snapshot[dailyIdxKey] as string[])] as string[]) : [];
+  if (!dailyIdx.includes(day)) dailyIdx.push(day);
+  updates[dailyIdxKey] = dailyIdx;
+
+  const weeklyIdx = Array.isArray(snapshot[weeklyIdxKey]) ? ([...(snapshot[weeklyIdxKey] as string[])] as string[]) : [];
+  if (!weeklyIdx.includes(week)) weeklyIdx.push(week);
+  updates[weeklyIdxKey] = weeklyIdx;
+
+  const monthlyIdx = Array.isArray(snapshot[monthlyIdxKey])
+    ? ([...(snapshot[monthlyIdxKey] as string[])] as string[])
+    : [];
+  if (!monthlyIdx.includes(month)) monthlyIdx.push(month);
+  updates[monthlyIdxKey] = monthlyIdx;
+
+  await browser.storage.sync.set(updates);
+  debugLog("flushPendingToSync", {
+    providerId,
+    amountMs,
+    ts,
+    iso: new Date(ts).toISOString(),
+    dKey,
+    wKey,
+    mKey,
+    yKey,
+    aKey,
   });
 }
 
@@ -731,32 +850,13 @@ export async function getCurrentProviderDuration() {
  * This avoids double-counting time that got already flushed.
  */
 export async function getCurrentProviderUnpersistedDuration(): Promise<number> {
-  const {
-    ["meta:runtime:provider"]: provider,
-    ["meta:runtime:start"]: start,
-    ["meta:runtime:lastPersisted"]: lastPersisted,
-    lastHeartbeat,
-  }: {
-    ["meta:runtime:provider"]?: string;
-    ["meta:runtime:start"]?: number;
-    ["meta:runtime:lastPersisted"]?: number;
-    lastHeartbeat?: number;
-  } = await browser.storage.local.get([
-    "meta:runtime:provider",
-    "meta:runtime:start",
-    "meta:runtime:lastPersisted",
-    "lastHeartbeat",
-  ]);
+  const runtime = await getRuntimeSessionState();
+  if (!runtime) return 0;
 
-  if (!provider || typeof start !== "number") return 0;
-
-  const now = Date.now() - (Date.now() % 1000);
-  const baseline = typeof lastPersisted === "number" && lastPersisted >= start ? lastPersisted : start;
-  const heartbeatOk = typeof lastHeartbeat === "number" && lastHeartbeat >= start;
-  const cappedNow = heartbeatOk ? Math.min(now, lastHeartbeat!) : now;
-  const delta = cappedNow - baseline;
-
-  return delta > 0 ? delta : 0;
+  const now = nowRoundedToSecond();
+  const baseline = runtime.lastPersisted >= runtime.start ? runtime.lastPersisted : runtime.start;
+  const liveDelta = Math.max(0, now - baseline);
+  return runtime.pendingMs + liveDelta;
 }
 
 /**
@@ -764,52 +864,47 @@ export async function getCurrentProviderUnpersistedDuration(): Promise<number> {
  * Uses meta:runtime:lastPersisted to avoid double-counting.
  */
 export async function persistActiveDuration(): Promise<void> {
-  const now = Date.now() - (Date.now() % 1000);
-  const {
-    ["meta:runtime:provider"]: provider,
-    ["meta:runtime:start"]: start,
-    ["meta:runtime:lastPersisted"]: lastPersisted,
-    lastHeartbeat,
-  }: {
-    ["meta:runtime:provider"]?: string;
-    ["meta:runtime:start"]?: number;
-    ["meta:runtime:lastPersisted"]?: number;
-    lastHeartbeat?: number;
-  } = await browser.storage.local.get([
-    "meta:runtime:provider",
-    "meta:runtime:start",
-    "meta:runtime:lastPersisted",
-    "lastHeartbeat",
-  ]);
+  const now = nowRoundedToSecond();
+  const runtime = await accumulateRuntimeDelta(now);
+  if (!runtime) return;
 
-  if (!provider || !start || !lastHeartbeat) {
-    debugLog("persistActiveDuration skip", {
-      provider,
-      start,
-      lastPersisted,
-      lastHeartbeat,
+  const shouldFlush =
+    runtime.pendingMs >= MAX_SYNC_FLUSH_CHUNK_MS ||
+    (runtime.pendingMs > 0 && (runtime.lastFlushAt === 0 || now - runtime.lastFlushAt >= SYNC_FLUSH_INTERVAL_MS));
+
+  if (!shouldFlush) {
+    debugLog("persistActiveDuration: buffered only", {
+      providerId: runtime.provider,
+      pendingMs: runtime.pendingMs,
+      lastFlushAt: runtime.lastFlushAt,
     });
     return;
   }
 
-  // Cap persistence to the last confirmed heartbeat to avoid counting through long gaps.
-  const cappedNow = Math.min(now, lastHeartbeat);
-  const baseline = typeof lastPersisted === "number" && lastPersisted >= start ? lastPersisted : start;
-  const delta = cappedNow - baseline;
-
-  if (delta <= 0) return;
-
-  await addDuration(provider, delta, cappedNow);
-  await browser.storage.local.set({ "meta:runtime:lastPersisted": cappedNow });
-  debugLog("persistActiveDuration", {
-    provider,
-    start,
-    lastPersisted,
-    lastHeartbeat,
-    cappedNow,
-    baseline,
-    delta,
-  });
+  const chunkMs = Math.min(runtime.pendingMs, MAX_SYNC_FLUSH_CHUNK_MS);
+  try {
+    await flushPendingToSync(runtime.provider, chunkMs, now);
+    await browser.storage.local.set({
+      "meta:runtime:pendingMs": Math.max(0, runtime.pendingMs - chunkMs),
+      "meta:runtime:lastFlushAt": now,
+      "meta:runtime:lastSeen": now,
+    });
+    debugLog("persistActiveDuration: flushed chunk", {
+      providerId: runtime.provider,
+      chunkMs,
+      pendingBefore: runtime.pendingMs,
+      pendingAfter: Math.max(0, runtime.pendingMs - chunkMs),
+      now,
+      isoNow: new Date(now).toISOString(),
+    });
+  } catch (err) {
+    console.error("Deprompt: persistActiveDuration flush failed", err);
+    debugLog("persistActiveDuration: flush failed, keeping pending local", {
+      providerId: runtime.provider,
+      pendingMs: runtime.pendingMs,
+      now,
+    });
+  }
 }
 
 export async function getContinousUsageNotificationLimit() {

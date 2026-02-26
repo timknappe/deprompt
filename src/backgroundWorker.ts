@@ -1,10 +1,9 @@
 import browser from "webextension-polyfill";
 import {
-  getActiveTrackedPlatforms,
   startTimerForProvider,
-  receiveEndTime,
+  finalizeSession,
   isAliveCheck,
-  addRemainderOnNonGracefulExit,
+  reconcileActiveSessionOnInit,
   rollover,
   setBlockToggle,
   initializeDefaults,
@@ -27,10 +26,15 @@ const debugLog = (...args: unknown[]) => console.log("[Deprompt-debug]", ...args
 let lastActiveTabId: number | null = null;
 let lastActiveProviderId: ProviderId | null = null;
 let trackingQueue = Promise.resolve();
-let focusLossTimer: ReturnType<typeof setTimeout> | null = null;
+let initPromise: Promise<void> = Promise.resolve();
 
 function enqueueTracking(taskName: string, task: () => Promise<void>) {
-  trackingQueue = trackingQueue.then(task).catch((err) => {
+  trackingQueue = trackingQueue
+    .then(async () => {
+      await initPromise;
+      await task();
+    })
+    .catch((err) => {
     console.error(`Deprompt: tracking task failed (${taskName})`, err);
   });
   return trackingQueue;
@@ -42,22 +46,6 @@ async function isFocusedNormalWindow(windowId: number): Promise<boolean> {
     return Boolean(win.focused && win.type !== "popup");
   } catch {
     return false;
-  }
-}
-
-async function hasFocusedNormalWindow(): Promise<boolean> {
-  try {
-    const wins = await browser.windows.getAll({ windowTypes: ["normal"] });
-    return wins.some((win) => win.focused);
-  } catch {
-    return false;
-  }
-}
-
-function clearFocusLossTimer() {
-  if (focusLossTimer !== null) {
-    clearTimeout(focusLossTimer);
-    focusLossTimer = null;
   }
 }
 
@@ -91,13 +79,18 @@ async function handleTabStateChange(tab: browser.Tabs.Tab): Promise<void> {
 
   if (lastActiveTabId === tab.id && lastActiveProviderId === providerId) return;
 
-  // Stop previous provider (unchanged)
+  if (providerId && lastActiveProviderId === providerId) {
+    // Same provider across multiple tabs should remain a single continuous session.
+    lastActiveTabId = tab.id;
+    return;
+  }
+
   if (lastActiveProviderId) {
     debugLog("handleTabStateChange: stopping previous provider", {
       tabId: lastActiveTabId,
       provider: lastActiveProviderId,
     });
-    await receiveEndTime(lastActiveProviderId);
+    await finalizeSession("provider-switch", lastActiveProviderId);
     lastActiveProviderId = null;
   }
 
@@ -187,25 +180,11 @@ browser.tabs.onActivated.addListener(async ({ tabId }) => {
 });
 
 browser.windows.onFocusChanged.addListener(async (windowId) => {
-  // This case will remain a problem as it is a technical limitation of browsers like chrome, WINDOW_ID_NONE is not only triggered by lost focus but also by toolbar interactions
   if (windowId === browser.windows.WINDOW_ID_NONE) {
-    clearFocusLossTimer();
-    focusLossTimer = setTimeout(() => {
-      void enqueueTracking("windows.onFocusChanged:none", async () => {
-        if (await hasFocusedNormalWindow()) return;
-        if (lastActiveProviderId) {
-          debugLog("windows.onFocusChanged: window lost focus", {
-            provider: lastActiveProviderId,
-          });
-          await receiveEndTime(lastActiveProviderId);
-          lastActiveProviderId = null;
-        }
-      });
-    }, 750);
+    // Keep counting through browser chrome focus changes (popup/address bar/native UI).
     return;
   }
 
-  clearFocusLossTimer();
   void enqueueTracking("windows.onFocusChanged", async () => {
     if (!(await isFocusedNormalWindow(windowId))) return;
     const [activeTab] = await browser.tabs.query({ active: true, windowId });
@@ -215,18 +194,57 @@ browser.windows.onFocusChanged.addListener(async (windowId) => {
   });
 });
 
+browser.tabs.onRemoved.addListener((tabId) => {
+  void enqueueTracking("tabs.onRemoved", async () => {
+    if (lastActiveTabId !== tabId) return;
+
+    const [activeTab] = await browser.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+
+    if (activeTab?.id) {
+      await handleTabStateChange(activeTab);
+      return;
+    }
+
+    if (lastActiveProviderId) {
+      await finalizeSession("active-tab-removed", lastActiveProviderId);
+      lastActiveProviderId = null;
+      lastActiveTabId = null;
+    }
+  });
+});
+
 // #endregion
 
 // #region Initialization & Messaging
 
-(async () => {
+initPromise = (async () => {
   const now = Date.now();
   await initializeDefaults();
   await rollover(now);
-  await addRemainderOnNonGracefulExit();
+
+  const [activeTab] = await browser.tabs.query({
+    active: true,
+    lastFocusedWindow: true,
+  });
+  const activeProviderId = activeTab?.url ? await resolveProvider(activeTab.url) : null;
+
+  if (activeTab?.id && activeProviderId) {
+    lastActiveTabId = activeTab.id;
+    lastActiveProviderId = activeProviderId;
+  } else {
+    lastActiveTabId = null;
+    lastActiveProviderId = null;
+  }
+
+  await reconcileActiveSessionOnInit(activeProviderId);
   debugLog("background init complete", {
     now,
     iso: new Date(now).toISOString(),
+    activeTabId: lastActiveTabId,
+    activeProviderId: lastActiveProviderId,
   });
 })();
 

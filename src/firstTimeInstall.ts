@@ -8,8 +8,56 @@ if (!(wizardEl instanceof HTMLElement)) {
 }
 const wizard = wizardEl;
 let step = 0;
+const MIN_DURATION_MINUTES = 5;
+const MAX_DURATION_MINUTES = 600;
 
 const steps: StepRenderer[] = [renderNotifications, renderBlocks, renderPlatforms, renderFinish];
+
+function parseDurationMinutes(input: HTMLInputElement): number | null {
+  const parsed = Number(input.value);
+  if (!Number.isFinite(parsed)) return null;
+  if (!Number.isInteger(parsed)) return null;
+  if (parsed < MIN_DURATION_MINUTES || parsed > MAX_DURATION_MINUTES) return null;
+  return parsed;
+}
+
+function setFieldError(errorId: string, message: string): void {
+  const errorEl = document.getElementById(errorId);
+  if (errorEl instanceof HTMLElement) {
+    errorEl.textContent = message;
+  }
+}
+
+function setInputValidityState(input: HTMLInputElement, isInvalid: boolean): void {
+  input.classList.toggle("is-invalid", isInvalid);
+  input.setAttribute("aria-invalid", isInvalid ? "true" : "false");
+}
+
+function validateDurationField(input: HTMLInputElement, errorId: string, label: string): number | null {
+  const minutes = parseDurationMinutes(input);
+  if (minutes === null) {
+    setInputValidityState(input, true);
+    setFieldError(
+      errorId,
+      `${label} must be a whole number between ${MIN_DURATION_MINUTES} and ${MAX_DURATION_MINUTES} minutes.`,
+    );
+    return null;
+  }
+
+  setInputValidityState(input, false);
+  setFieldError(errorId, "");
+  return minutes;
+}
+
+function sanitizeDurationField(input: HTMLInputElement, fallback: number): number {
+  const parsed = parseDurationMinutes(input);
+  return parsed ?? fallback;
+}
+
+function timeToMinutes(value: string): number {
+  const [hour = "0", minute = "0"] = value.split(":");
+  return Number(hour) * 60 + Number(minute);
+}
 
 // ---- STEP 1 ----
 function renderNotifications(): void {
@@ -26,6 +74,7 @@ function renderNotifications(): void {
         <input type="number" id="notifyDailyDuration" min="5" max="600" value="45" />
         <span>minutes</span>
       </div>
+      <p id="notifyDailyError" class="field-error" aria-live="polite"></p>
       <label class="radio-option">
         <input type="checkbox" id="notifyContinuousToggle">
         <span>Notify (Continuous) - remind you after a set time of continuous usage</span>
@@ -35,6 +84,7 @@ function renderNotifications(): void {
         <input type="number" id="notifyContinuousDuration" min="5" max="600" value="15" />
         <span>minutes</span>
       </div>
+      <p id="notifyContinuousError" class="field-error" aria-live="polite"></p>
     </div>
 
     <div class="button-row">
@@ -67,18 +117,93 @@ function renderNotifications(): void {
         return;
       }
 
+      const updateToggleState = (
+        toggle: HTMLInputElement,
+        input: HTMLInputElement,
+        errorId: string,
+        label: string,
+      ): boolean => {
+        input.disabled = !toggle.checked;
+        if (!toggle.checked) {
+          setInputValidityState(input, false);
+          setFieldError(errorId, "");
+          return true;
+        }
+        return validateDurationField(input, errorId, label) !== null;
+      };
+
+      if (
+        !updateToggleState(notifyDailyToggle, notifyDailyDuration, "notifyDailyError", "Daily reminder") ||
+        !updateToggleState(notifyContinuousToggle, notifyContinuousDuration, "notifyContinuousError", "Continuous reminder")
+      ) {
+        return;
+      }
+
       await browser.storage.sync.set({
         "settings:notification:daily": {
           enabled: notifyDailyToggle.checked,
-          minutes: Number(notifyDailyDuration.value),
+          minutes: sanitizeDurationField(notifyDailyDuration, 45),
         },
         "settings:notification:continuous": {
           enabled: notifyContinuousToggle.checked,
-          minutes: Number(notifyContinuousDuration.value),
+          minutes: sanitizeDurationField(notifyContinuousDuration, 15),
         },
       });
       nextStep();
     };
+  }
+
+  const notifyDailyToggle = document.getElementById("notifyDailyToggle");
+  const notifyDailyDuration = document.getElementById("notifyDailyDuration");
+  const notifyContinuousToggle = document.getElementById("notifyContinuousToggle");
+  const notifyContinuousDuration = document.getElementById("notifyContinuousDuration");
+
+  if (
+    notifyDailyToggle instanceof HTMLInputElement &&
+    notifyDailyDuration instanceof HTMLInputElement &&
+    notifyContinuousToggle instanceof HTMLInputElement &&
+    notifyContinuousDuration instanceof HTMLInputElement
+  ) {
+    const syncDurationState = (
+      toggle: HTMLInputElement,
+      input: HTMLInputElement,
+      errorId: string,
+      label: string,
+    ): void => {
+      input.disabled = !toggle.checked;
+      if (!toggle.checked) {
+        setInputValidityState(input, false);
+        setFieldError(errorId, "");
+      } else {
+        void validateDurationField(input, errorId, label);
+      }
+    };
+
+    notifyDailyToggle.addEventListener("change", () => {
+      syncDurationState(notifyDailyToggle, notifyDailyDuration, "notifyDailyError", "Daily reminder");
+    });
+    notifyContinuousToggle.addEventListener("change", () => {
+      syncDurationState(notifyContinuousToggle, notifyContinuousDuration, "notifyContinuousError", "Continuous reminder");
+    });
+
+    notifyDailyDuration.addEventListener("input", () => {
+      if (notifyDailyToggle.checked) {
+        void validateDurationField(notifyDailyDuration, "notifyDailyError", "Daily reminder");
+      }
+    });
+    notifyContinuousDuration.addEventListener("input", () => {
+      if (notifyContinuousToggle.checked) {
+        void validateDurationField(notifyContinuousDuration, "notifyContinuousError", "Continuous reminder");
+      }
+    });
+
+    syncDurationState(notifyDailyToggle, notifyDailyDuration, "notifyDailyError", "Daily reminder");
+    syncDurationState(
+      notifyContinuousToggle,
+      notifyContinuousDuration,
+      "notifyContinuousError",
+      "Continuous reminder",
+    );
   }
 }
 // ---- STEP 2 ----
@@ -95,6 +220,7 @@ function renderBlocks(): void {
         <span>Block after (minutes)</span>
         <input type="number" id="timeLimit" min="5" max="600" value="60" />
       </div>
+      <p id="timeLimitError" class="field-error" aria-live="polite"></p>
     </div>
     <label class="radio-option">
         <input type="checkbox" id="fixedBlockToggle">
@@ -105,6 +231,7 @@ function renderBlocks(): void {
         <input type="time" id="blockStart" /> <span>to</span>
           <input type="time" id="blockEnd" />
       </div>
+      <p id="fixedBlockError" class="field-error" aria-live="polite"></p>
     </div>
 
     <div class="button-row">
@@ -117,19 +244,38 @@ function renderBlocks(): void {
   const timeLimitInput = document.getElementById("timeLimit");
 
   const fixedBlockToggle = document.getElementById("fixedBlockToggle");
+  const blockStart = document.getElementById("blockStart");
+  const blockEnd = document.getElementById("blockEnd");
 
   if (
     !(blockToggle instanceof HTMLInputElement) ||
     !(timeLimitInput instanceof HTMLInputElement) ||
-    !(fixedBlockToggle instanceof HTMLInputElement)
+    !(fixedBlockToggle instanceof HTMLInputElement) ||
+    !(blockStart instanceof HTMLInputElement) ||
+    !(blockEnd instanceof HTMLInputElement)
   ) {
     throw new Error("Missing block configuration inputs");
   }
 
   blockToggle.addEventListener("change", () => {
     timeLimitInput.disabled = !blockToggle.checked;
+    if (!blockToggle.checked) {
+      setInputValidityState(timeLimitInput, false);
+      setFieldError("timeLimitError", "");
+    }
   });
   timeLimitInput.disabled = !blockToggle.checked;
+  fixedBlockToggle.addEventListener("change", () => {
+    blockStart.disabled = !fixedBlockToggle.checked;
+    blockEnd.disabled = !fixedBlockToggle.checked;
+    if (!fixedBlockToggle.checked) {
+      setInputValidityState(blockStart, false);
+      setInputValidityState(blockEnd, false);
+      setFieldError("fixedBlockError", "");
+    }
+  });
+  blockStart.disabled = !fixedBlockToggle.checked;
+  blockEnd.disabled = !fixedBlockToggle.checked;
 
   const back = document.getElementById("back");
   if (back instanceof HTMLButtonElement) {
@@ -141,7 +287,45 @@ function renderBlocks(): void {
     next.onclick = async () => {
       const blockEnabled = blockToggle.checked;
       const fixedBlockEnabled = fixedBlockToggle.checked;
-      const minutes = Math.max(1, Number(timeLimitInput.value) || 0);
+      let hasError = false;
+
+      if (blockEnabled && validateDurationField(timeLimitInput, "timeLimitError", "Daily time limit") === null) {
+        hasError = true;
+      } else if (!blockEnabled) {
+        setInputValidityState(timeLimitInput, false);
+        setFieldError("timeLimitError", "");
+      }
+
+      if (fixedBlockEnabled) {
+        setFieldError("fixedBlockError", "");
+        const start = blockStart.value;
+        const end = blockEnd.value;
+
+        if (!start || !end) {
+          setInputValidityState(blockStart, !start);
+          setInputValidityState(blockEnd, !end);
+          setFieldError("fixedBlockError", "Start and end times are required.");
+          hasError = true;
+        } else if (timeToMinutes(end) <= timeToMinutes(start)) {
+          setInputValidityState(blockStart, true);
+          setInputValidityState(blockEnd, true);
+          setFieldError("fixedBlockError", "End time must be after start time.");
+          hasError = true;
+        } else {
+          setInputValidityState(blockStart, false);
+          setInputValidityState(blockEnd, false);
+        }
+      } else {
+        setInputValidityState(blockStart, false);
+        setInputValidityState(blockEnd, false);
+        setFieldError("fixedBlockError", "");
+      }
+
+      if (hasError) {
+        return;
+      }
+
+      const minutes = sanitizeDurationField(timeLimitInput, 60);
 
       await browser.storage.sync.set({
         "settings:timeLimit": {
@@ -151,22 +335,36 @@ function renderBlocks(): void {
       });
 
       if (fixedBlockEnabled) {
-        const blockStart = document.getElementById("blockStart");
-        const blockEnd = document.getElementById("blockEnd");
-
-        if (blockStart instanceof HTMLInputElement || blockEnd instanceof HTMLInputElement) {
-          if ((blockStart as HTMLInputElement).value || (blockEnd as HTMLInputElement).value) {
-            await browser.storage.sync.set({
-              "settings:block:fixed": [
-                `${(blockStart as HTMLInputElement).value};${(blockEnd as HTMLInputElement).value}`,
-              ],
-            });
-          }
-        }
+        await browser.storage.sync.set({
+          "settings:block:fixed": [`${blockStart.value};${blockEnd.value}`],
+        });
       }
       nextStep();
     };
   }
+
+  timeLimitInput.addEventListener("input", () => {
+    if (blockToggle.checked) {
+      void validateDurationField(timeLimitInput, "timeLimitError", "Daily time limit");
+    }
+  });
+  const validateFixedBlockTimes = () => {
+    if (!fixedBlockToggle.checked) return;
+    const start = blockStart.value;
+    const end = blockEnd.value;
+    setFieldError("fixedBlockError", "");
+    if (!start || !end) return;
+    if (timeToMinutes(end) <= timeToMinutes(start)) {
+      setInputValidityState(blockStart, true);
+      setInputValidityState(blockEnd, true);
+      setFieldError("fixedBlockError", "End time must be after start time.");
+      return;
+    }
+    setInputValidityState(blockStart, false);
+    setInputValidityState(blockEnd, false);
+  };
+  blockStart.addEventListener("input", validateFixedBlockTimes);
+  blockEnd.addEventListener("input", validateFixedBlockTimes);
 }
 
 // ---- STEP 3 ----
@@ -184,6 +382,7 @@ function renderPlatforms(): void {
         </label>`,
       ).join("")}
     </div>
+    <p id="platformsError" class="field-error" aria-live="polite"></p>
 
     <div class="button-row">
       <button id="back">< Back</button>
@@ -200,6 +399,10 @@ function renderPlatforms(): void {
     next.onclick = async () => {
       const providers: ProviderSelections = {};
       const checkboxes = document.querySelectorAll<HTMLInputElement>('#alt-radio-group input[type="checkbox"]');
+      const hasSelection = Array.from(checkboxes).some((cb) => cb.checked);
+      setFieldError("platformsError", hasSelection ? "" : "Select at least one platform.");
+      if (!hasSelection) return;
+
       checkboxes.forEach((cb) => {
         providers[cb.name] = cb.checked;
       });
@@ -215,6 +418,7 @@ function renderPlatforms(): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     if (target.type !== "checkbox") return;
+    setFieldError("platformsError", "");
     const platform = target.name;
     if (!platform) return;
     const isChecked = target.checked;
