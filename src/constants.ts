@@ -63,6 +63,7 @@ export const STORAGE_KEYS = {
   blockFixedTime: "settings:block:fixed",
   providers: "settings:providers",
   formattingShowSeconds: "settings:formatting:showSeconds",
+  trackingCountUnfocused: "settings:tracking:countUnfocused",
 } as const;
 
 export const SETTINGS_PROVIDERS = {
@@ -93,6 +94,9 @@ export const DEFAULT_SETTINGS: SettingsState = {
   }, {}),
   formatting: {
     showSeconds: true,
+  },
+  tracking: {
+    countUnfocusedTime: true,
   },
 };
 

@@ -45,4 +45,7 @@ export type SettingsState = {
   formatting: {
     showSeconds: boolean;
   };
+  tracking: {
+    countUnfocusedTime: boolean;
+  };
 };

@@ -47,6 +47,9 @@ async function loadSettings(): Promise<SettingsState> {
   const providersRaw = result[STORAGE_KEYS.providers];
   const providers = typeof providersRaw === "object" && providersRaw ? (providersRaw as ProviderSelections) : {};
   const showSeconds = Boolean(result[STORAGE_KEYS.formattingShowSeconds] ?? DEFAULT_SETTINGS.formatting.showSeconds);
+  const countUnfocusedTime = result[STORAGE_KEYS.trackingCountUnfocused] === undefined
+    ? DEFAULT_SETTINGS.tracking.countUnfocusedTime
+    : Boolean(result[STORAGE_KEYS.trackingCountUnfocused]);
 
   const mergedTimeLimit = { ...DEFAULT_SETTINGS.timeLimit, ...timeLimitObj };
   const normalizedTimeLimit: ToggleableDurationSetting = {
@@ -76,6 +79,9 @@ async function loadSettings(): Promise<SettingsState> {
     },
     formatting: {
       showSeconds,
+    },
+    tracking: {
+      countUnfocusedTime,
     },
   };
 }
@@ -279,15 +285,26 @@ function buildProviderList(selectedProviders: ProviderSelections): void {
   });
 }
 
-const wireFormatting = (showSeconds: boolean): void => {
-  const toggle = document.getElementById("showSecondsToggle");
-  if (!(toggle instanceof HTMLInputElement)) return;
-  toggle.checked = showSeconds;
-  toggle.addEventListener("change", async (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
-    await saveSetting(STORAGE_KEYS.formattingShowSeconds, target.checked);
-  });
+const wireFormatting = (showSeconds: boolean, countUnfocusedTime: boolean): void => {
+  const showSecondsToggle = document.getElementById("showSecondsToggle");
+  if (showSecondsToggle instanceof HTMLInputElement) {
+    showSecondsToggle.checked = showSeconds;
+    showSecondsToggle.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      await saveSetting(STORAGE_KEYS.formattingShowSeconds, target.checked);
+    });
+  }
+
+  const unfocusedToggle = document.getElementById("countUnfocusedToggle");
+  if (unfocusedToggle instanceof HTMLInputElement) {
+    unfocusedToggle.checked = countUnfocusedTime;
+    unfocusedToggle.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      await saveSetting(STORAGE_KEYS.trackingCountUnfocused, target.checked);
+    });
+  }
 };
 
 async function init() {
@@ -308,7 +325,7 @@ async function init() {
   renderBlockRanges(currentBlockRanges);
 
   buildProviderList(settings.providers);
-  wireFormatting(settings.formatting.showSeconds);
+  wireFormatting(settings.formatting.showSeconds, settings.tracking.countUnfocusedTime);
 
   wireTimeLimit();
   wireNotifications();

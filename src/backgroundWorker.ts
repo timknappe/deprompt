@@ -8,6 +8,7 @@ import {
   setBlockToggle,
   initializeDefaults,
   persistActiveDuration,
+  getCountUnfocusedTime,
 } from "./storageManager.js";
 import { isBlocked, resolveProvider, scheduleWindowUI } from "./helpers.js";
 import type { ProviderId } from "./types.js";
@@ -181,7 +182,18 @@ browser.tabs.onActivated.addListener(async ({ tabId }) => {
 
 browser.windows.onFocusChanged.addListener(async (windowId) => {
   if (windowId === browser.windows.WINDOW_ID_NONE) {
-    // Keep counting through browser chrome focus changes (popup/address bar/native UI).
+    // When the browser loses focus entirely, stop tracking if the user opted out of
+    // counting unfocused time.
+    const countUnfocused = await getCountUnfocusedTime();
+    if (!countUnfocused && lastActiveProviderId) {
+      void enqueueTracking("windows.onFocusChanged:blur", async () => {
+        if (lastActiveProviderId) {
+          await finalizeSession("window-blur", lastActiveProviderId);
+          lastActiveProviderId = null;
+          lastActiveTabId = null;
+        }
+      });
+    }
     return;
   }
 

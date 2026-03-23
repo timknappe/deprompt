@@ -8,6 +8,8 @@ const debugLog = (...args: unknown[]) => console.log("[Deprompt-debug]", ...args
 
 const SYNC_FLUSH_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_SYNC_FLUSH_CHUNK_MS = 10 * 60 * 1000;
+// If we haven't seen a heartbeat for longer than this, assume the device slept.
+const MAX_IDLE_GAP_MS = 5 * 60 * 1000;
 
 type RuntimeSessionState = {
   provider: string;
@@ -66,6 +68,16 @@ async function getRuntimeSessionState(): Promise<RuntimeSessionState | null> {
 async function accumulateRuntimeDelta(now: number): Promise<RuntimeSessionState | null> {
   const runtime = await getRuntimeSessionState();
   if (!runtime) return null;
+
+  // If the gap since we last confirmed the timer was alive is too large, the device
+  // was likely sleeping. Skip the entire gap to avoid inflating usage stats.
+  if (now - runtime.lastSeen > MAX_IDLE_GAP_MS) {
+    await browser.storage.local.set({
+      "meta:runtime:lastPersisted": now,
+      "meta:runtime:lastSeen": now,
+    });
+    return { ...runtime, lastPersisted: now, lastSeen: now };
+  }
 
   const baseline = runtime.lastPersisted >= runtime.start ? runtime.lastPersisted : runtime.start;
   const delta = Math.max(0, now - baseline);
@@ -711,6 +723,13 @@ export async function checkShowSeconds(): Promise<boolean> {
   return showSeconds as boolean;
 }
 
+export async function getCountUnfocusedTime(): Promise<boolean> {
+  const { ["settings:tracking:countUnfocused"]: val } = await browser.storage.sync.get(
+    "settings:tracking:countUnfocused",
+  );
+  return val === undefined ? DEFAULT_SETTINGS.tracking.countUnfocusedTime : Boolean(val);
+}
+
 export async function initializeDefaults() {
   const existing = await browser.storage.sync.get([
     "settings:formatting:showSeconds",
@@ -718,6 +737,7 @@ export async function initializeDefaults() {
     "settings:notification:daily",
     "settings:notification:continuous",
     "settings:providers",
+    "settings:tracking:countUnfocused",
   ]);
 
   const updates: Record<string, unknown> = {};
@@ -760,6 +780,10 @@ export async function initializeDefaults() {
   const providers = existing["settings:providers"];
   if (providers === undefined || typeof providers !== "object" || providers === null) {
     updates["settings:providers"] = DEFAULT_SETTINGS.providers;
+  }
+
+  if (existing["settings:tracking:countUnfocused"] === undefined) {
+    updates["settings:tracking:countUnfocused"] = DEFAULT_SETTINGS.tracking.countUnfocusedTime;
   }
 
   if (Object.keys(updates).length > 0) {
