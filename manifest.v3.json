@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Deprompt",
   "description": "A simple and minimal browser extension to help you grow conscious and stay mindful of your AI usage.",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "permissions": ["tabs", "storage", "alarms", "scripting", "downloads"],
   "host_permissions": [
     "*://chat.openai.com/*",

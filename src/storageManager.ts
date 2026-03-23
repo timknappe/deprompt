@@ -49,8 +49,7 @@ async function getRuntimeSessionState(): Promise<RuntimeSessionState | null> {
   }
 
   const start = startRaw;
-  const lastPersisted =
-    typeof lastPersistedRaw === "number" && lastPersistedRaw >= start ? lastPersistedRaw : start;
+  const lastPersisted = typeof lastPersistedRaw === "number" && lastPersistedRaw >= start ? lastPersistedRaw : start;
   const pendingMs = typeof pendingMsRaw === "number" && pendingMsRaw > 0 ? pendingMsRaw : 0;
   const lastSeen = typeof lastSeenRaw === "number" && lastSeenRaw >= start ? lastSeenRaw : lastPersisted;
   const lastFlushAt = typeof lastFlushAtRaw === "number" ? lastFlushAtRaw : 0;
@@ -620,6 +619,11 @@ export async function reconcileActiveSessionOnInit(activeProviderId: ProviderId 
   const runtime = await getRuntimeSessionState();
   if (!runtime) {
     await browser.alarms.clear("syncTimer");
+    // Required for MV3 when the service worker is killed while the issue still open
+    if (activeProviderId) {
+      await startTimerForProvider(activeProviderId);
+      debugLog("reconcileActiveSessionOnInit: no prior session, started fresh", { activeProviderId });
+    }
     return;
   }
 
@@ -678,7 +682,9 @@ export async function flushPendingToSync(providerId: string, amountMs: number, t
   if (!dailyIdx.includes(day)) dailyIdx.push(day);
   updates[dailyIdxKey] = dailyIdx;
 
-  const weeklyIdx = Array.isArray(snapshot[weeklyIdxKey]) ? ([...(snapshot[weeklyIdxKey] as string[])] as string[]) : [];
+  const weeklyIdx = Array.isArray(snapshot[weeklyIdxKey])
+    ? ([...(snapshot[weeklyIdxKey] as string[])] as string[])
+    : [];
   if (!weeklyIdx.includes(week)) weeklyIdx.push(week);
   updates[weeklyIdxKey] = weeklyIdx;
 
