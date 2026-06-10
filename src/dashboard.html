@@ -7,15 +7,14 @@
     <title>Deprompt Dashboard</title>
   </head>
   <body>
-    <!-- Add radio buttons for daily, weekly, monthly, yearly, all time | upper bar -->
     <header id="header" class="card">
+      <div id="header-left">
+        <span class="logo-text">deprompt</span>
+        <span class="logo-badge">dashboard</span>
+      </div>
+
       <div id="radio-area">
-        <!-- <label class="radio-label"
-          ><input type="radio" name="viewType" value="daily" />Daily</label
-        > -->
-        <label class="radio-label"
-          ><input type="radio" name="viewType" value="weekly" checked /><span>Weekly</span></label
-        >
+        <label class="radio-label"><input type="radio" name="viewType" value="weekly" checked /><span>Weekly</span></label>
         <label class="radio-label"><input type="radio" name="viewType" value="monthly" /><span>Monthly</span></label>
         <label class="radio-label"><input type="radio" name="viewType" value="yearly" /><span>Yearly</span></label>
         <label class="radio-label"><input type="radio" name="viewType" value="alltime" /><span>All Time</span></label>
@@ -23,45 +22,66 @@
 
       <a href="options.html" class="settingsField">
         <img src="../assets/settings.png" class="settingsIcon" />
-        <p class="settingsText">Settings</p>
+        <span class="settingsText">Settings</span>
       </a>
     </header>
 
     <main>
-      <!-- always show current day and all time | No chart just numbers 50% left + Block now button -->
-      <section id="stats-section" class="card two-column">
-        <div class="left">
-          <div class="metric">
-            <h3>Today's Usage</h3>
-            <p id="today-usage"></p>
-          </div>
-          <div class="metric">
-            <h3>All-Time Usage</h3>
-            <p id="alltime-usage">0h 0m</p>
-          </div>
+      <!-- Primary stat cards -->
+      <section id="stats-grid">
+        <div class="stat-card highlight">
+          <div class="stat-label">Today</div>
+          <div class="stat-value" id="today-usage">—</div>
         </div>
-        <div class="right">
-          <h3>Quick actions</h3>
-          <div id="button-group">
-            <button id="dashboard-block" class="button primary">Block Now</button>
-            <button id="dashboard-snooze" class="button primary"></button>
-          </div>
+        <div class="stat-card">
+          <div class="stat-label">This Week</div>
+          <div class="stat-value" id="week-usage">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">All Time</div>
+          <div class="stat-value" id="alltime-usage">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Top AI Today</div>
+          <div class="stat-value" id="top-ai-today">—</div>
+          <div class="stat-sub" id="top-ai-today-time"></div>
         </div>
       </section>
 
-      <!-- Hour, day, week, month, year breakdown | full width bar chart -->
-      <section id="breakdown-section" class="card two-column">
-        <div class="left">
-          <h3>Usage Breakdown</h3>
+      <!-- Charts -->
+      <section id="breakdown-section" class="card">
+        <div id="chart-left">
+          <div class="section-label">Usage Breakdown</div>
           <div id="barChart" class="chart"></div>
         </div>
-        <!-- Percentage between providers, | pie chart 50% right -->
-        <div class="right">
-          <h3>Provider Distribution</h3>
+        <div id="chart-right">
+          <div class="section-label">Provider Distribution</div>
           <div id="pieChart" class="chart"></div>
         </div>
       </section>
+
+      <!-- Secondary stats + quick actions -->
+      <section id="secondary-row" class="card">
+        <div class="secondary-stat">
+          <span class="secondary-label">Active Days (this week)</span>
+          <span class="secondary-value" id="active-days">—</span>
+        </div>
+        <div class="row-divider"></div>
+        <div class="secondary-stat">
+          <span class="secondary-label">Last Week</span>
+          <span class="secondary-value" id="last-week-usage">—</span>
+        </div>
+        <div class="row-divider"></div>
+        <div class="secondary-stat actions-stat">
+          <span class="secondary-label">Quick Actions</span>
+          <div id="button-group">
+            <button id="dashboard-block" class="button primary">Block Now</button>
+            <button id="dashboard-snooze" class="button primary">Snooze</button>
+          </div>
+        </div>
+      </section>
     </main>
+
     <div id="footer-links">
       <a href="https://github.com/timknappe/deprompt">Contribute on Github</a>
       <a href="https://timknappe.dev/archive/societal-impact-cognitive-offloading/">Why this is important</a>

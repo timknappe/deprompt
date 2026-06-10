@@ -1,166 +1,86 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
+
 ::selection {
   background: #7c4dff;
   color: #ffffff;
 }
+
 body {
-  background-color: #1e1e1e;
+  background-color: #161618;
   color: #ddd;
   font-family: "Inter", sans-serif;
   margin: 0;
-  padding: 24px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
+/* ── Cards ── */
+
 .card {
-  background: rgba(40, 40, 40, 0.85);
-  border: 1px solid rgba(80, 80, 80, 0.6);
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  background: #1f1f22;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
   padding: 16px 20px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
+
+/* ── Header ── */
 
 #header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 12px 18px;
+  margin-bottom: 12px;
 }
+
+#header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.logo-badge {
+  font-size: 11px;
+  color: #7c4dff;
+  background: rgba(124, 77, 255, 0.15);
+  border: 1px solid rgba(124, 77, 255, 0.3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+/* ── Radio / view selector ── */
 
 #radio-area {
   display: flex;
-  background: rgba(50, 50, 50, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 6px 10px;
-  gap: 0.0625em;
+  padding: 3px;
+  gap: 2px;
   user-select: none;
-  -webkit-user-drag: none;
 }
 
 .radio-label {
   font-size: 13px;
-  color: #ccc;
   cursor: pointer;
-}
-
-.radio-label input {
-  accent-color: #7c4dff;
-  margin-right: 4px;
-}
-
-.settingsField {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #b3aaff;
-  text-decoration: none;
-  font-size: 14px;
-}
-
-.settingsIcon {
-  width: 22px;
-  height: 22px;
-  opacity: 0.8;
-}
-
-.two-column {
-  gap: 20px;
-  align-items: stretch;
-}
-
-.metric {
-  margin-bottom: 12px;
-}
-
-.metric h3 {
-  margin: 0;
-  font-size: 14px;
-  color: #aaa;
-}
-
-.metric p {
-  font-size: 20px;
-  font-weight: 600;
-  color: #fff;
-  margin: 4px 0 0 0;
-}
-
-.button {
-  border: none;
-  border-radius: 6px;
-  padding: 8px 14px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.button.primary {
-  background-color: #7c4dff;
-  color: white;
-}
-
-.button.danger {
-  background-color: #d64545;
-  color: white;
-}
-
-.button:hover {
-  filter: brightness(1.15);
-}
-
-.chart {
-  height: 260px;
-  min-height: 220px;
-  width: 100%;
-  background: rgba(30, 30, 30, 0.6);
-  border-radius: 8px;
-  border: 1px solid rgba(70, 70, 70, 0.6);
-  display: block;
-  align-items: center;
-  justify-content: center;
-  color: #777;
-  font-size: 13px;
-}
-
-#breakdown-section h3 {
-  margin-bottom: 12px;
-  color: #ccc;
-}
-
-#breakdown-section {
-  height: 400px;
-  min-height: 400px;
-  width: 100%;
-  display: flex;
-}
-
-.radio-label span {
-  display: block;
-  cursor: pointer;
-  background-color: #fff;
-  padding: 0.375em 0.75em;
-  position: relative;
-  margin-left: 0.0625em;
-  box-shadow: 0 0 0 0.0625em #b5bfd9;
-  letter-spacing: 0.05em;
-  color: #3e4963;
-  text-align: center;
-  transition: background-color 0.5s ease;
-}
-
-.radio-label:first-child span {
-  border-radius: 0.375em 0 0 0.375em;
-}
-
-.radio-label:last-child span {
-  border-radius: 0 0.375em 0.375em 0;
 }
 
 #radio-area input[type="radio"] {
@@ -171,148 +91,348 @@ body {
   position: absolute;
   white-space: nowrap;
   width: 1px;
-  z-index: -1;
+}
+
+.radio-label span {
+  display: block;
+  padding: 5px 14px;
+  border-radius: 6px;
+  color: #888;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+}
+
+.radio-label:hover span {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 #radio-area input[type="radio"]:checked + span {
-  box-shadow: 0 0 0 0.125em #7c4dff;
-  z-index: 10;
-  background-color: #f1edff;
+  background: #7c4dff;
+  color: #fff;
+  box-shadow: 0 1px 6px rgba(124, 77, 255, 0.4);
+}
+
+/* ── Settings link ── */
+
+.settingsField {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #888;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.settingsField:hover {
+  color: #ccc;
+}
+
+.settingsIcon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
 }
 
 .settingsText {
-  color: white;
+  color: inherit;
 }
 
-.settingsText:hover {
-  text-decoration: underline;
+/* ── Primary stat cards ── */
+
+#stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.right {
-  width: 30%;
-  height: 100%;
+.stat-card {
+  background: #1f1f22;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 16px 18px;
 }
 
-.left {
-  width: 70%;
-  height: 100%;
+.stat-card.highlight {
+  border-color: rgba(124, 77, 255, 0.35);
+  background: rgba(124, 77, 255, 0.07);
 }
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.stat-card.highlight .stat-value {
+  color: #b39dff;
+}
+
+.stat-sub {
+  font-size: 11px;
+  color: #555;
+  margin-top: 3px;
+}
+
+/* ── Charts ── */
+
+#breakdown-section {
+  display: flex;
+  gap: 16px;
+  height: 300px;
+  align-items: stretch;
+}
+
+#chart-left {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+#chart-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 10px;
+}
+
+.chart {
+  flex: 1;
+  min-height: 0;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: block;
+  overflow: hidden;
+}
+
+/* ── Secondary stats + quick actions row ── */
+
+#secondary-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+}
+
+.secondary-stat {
+  flex: 1;
+  padding: 0 16px;
+}
+
+.secondary-stat:first-child {
+  padding-left: 0;
+}
+
+.secondary-stat:last-child {
+  padding-right: 0;
+}
+
+.secondary-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.secondary-value {
+  font-size: 17px;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.row-divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.actions-stat {
+  flex: 1.2;
+}
+
+/* ── Buttons ── */
 
 #button-group {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 0;
+  width: 100%;
 }
 
-#stats-section {
-  display: flex;
+#button-group .button {
+  flex: 1;
+  padding: 7px 8px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.button {
+  border: none;
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.15s, opacity 0.15s;
+  font-family: inherit;
+}
+
+.button.primary {
+  background: #7c4dff;
+  color: #fff;
+}
+
+.button.danger {
+  background: #c0392b;
+  color: #fff;
+}
+
+.button:hover {
+  filter: brightness(1.15);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* ── Footer ── */
 
 #footer-links {
   display: flex;
   justify-content: center;
-  color: white;
   align-items: center;
+  gap: 24px;
+  padding: 10px 0 4px;
 }
 
 #footer-links a {
+  font-size: 12px;
+  color: #444;
   text-decoration: none;
-  color: white;
-  margin: 0 10px;
-}
-
-#footer-links a:visited {
-  color: white;
+  transition: color 0.15s;
 }
 
 #footer-links a:hover {
-  text-decoration: underline;
+  color: #888;
 }
 
-@media (max-width: 1024px) {
-  body {
-    padding: 20px;
+/* ── Responsive ── */
+
+@media (max-width: 960px) {
+  #stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .left,
-  .right {
-    width: 100%;
-  }
-
-  #stats-section,
   #breakdown-section {
     flex-direction: column;
-  }
-
-  #stats-section {
-    gap: 16px;
-  }
-
-  #breakdown-section {
     height: auto;
-    min-height: 300px;
   }
 
-  #breakdown-section .chart {
-    height: 260px;
+  #chart-left,
+  #chart-right {
+    height: 240px;
+    flex: none;
+  }
+
+  .chart {
+    flex: none;
+    height: 100%;
+  }
+
+  #secondary-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .secondary-stat {
+    flex: 0 0 auto;
+    padding: 0;
+  }
+
+  .row-divider {
+    display: none;
+  }
+
+  .actions-stat {
+    flex: 0 0 100%;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   body {
-    padding: 16px;
+    padding: 12px 14px;
   }
 
   #header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
   }
 
   #radio-area {
     width: 100%;
-    flex-wrap: wrap;
+    justify-content: space-between;
   }
 
-  .card {
-    padding: 14px 16px;
+  .radio-label span {
+    padding: 5px 10px;
   }
 
-  .metric p {
+  #stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .stat-value {
     font-size: 18px;
   }
 
-  #stats-section {
-    gap: 12px;
-  }
-
-  #button-group {
-    flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 480px) {
-  body {
-    padding: 12px;
-  }
-
-  .card {
-    padding: 12px 14px;
-  }
-
-  #radio-area {
-    padding: 6px;
-  }
-
   .button {
-    width: 100%;
-  }
-
-  #button-group {
-    gap: 8px;
+    flex: 1;
   }
 
   #footer-links {
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+@media (max-width: 400px) {
+  #stats-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }

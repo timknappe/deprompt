@@ -158,20 +158,6 @@ const sameUnit = (a: number, b: number, unit: dayjs.OpUnitType) => dayjs(a).isSa
 // #endregion
 
 // #region sync storage helpers
-/**
- * Increments a numeric value stored in sync storage.
- * @param {string} key - Storage key to update.
- * @param {number} delta - Amount in milliseconds to add.
- * @returns {Promise<number>} New accumulated value after the increment.
- */
-async function incSync(key: string, delta: number): Promise<number> {
-  const result = await getSync(key);
-  const currentValue = result[key];
-  const cur = typeof currentValue === "number" ? currentValue : 0;
-  const newVal = cur + delta;
-  await browser.storage.sync.set({ [key]: newVal });
-  return newVal;
-}
 
 /**
  * Writes a value to sync storage at the provided key.
@@ -298,7 +284,6 @@ async function maintainWeeklyHistory(providerId: string, lastTs: number, nowTs: 
   weeks.sort((a, b) => a.localeCompare(b));
 
   const nowMonthStart = dayjs(nowTs).startOf("month");
-  const prevMonth = dayjs(nowTs).subtract(1, "month").format("YYYY-MM");
 
   const monthChanged = !sameUnit(lastTs, nowTs, "month");
 
@@ -312,14 +297,9 @@ async function maintainWeeklyHistory(providerId: string, lastTs: number, nowTs: 
 
     if (toCollapse.length > 0) {
       for (const w of toCollapse) {
-        const wKey = `week:${w}:${providerId}`;
-        const obj = await getSync(wKey);
-        const rawVal = obj[wKey];
-        const wVal = typeof rawVal === "number" ? rawVal : 0;
-        if (wVal > 0) {
-          await incSync(`month:${prevMonth}:${providerId}`, wVal);
-        }
-        await delSync(wKey);
+        // Just delete — flushPendingToSync already wrote this data into month: and year:
+        // keys in real-time, so adding it again here would double-count.
+        await delSync(`week:${w}:${providerId}`);
       }
       weeks = weeks.filter((w) => !toCollapse.includes(w));
       await setIndex("weekly", providerId, weeks);
@@ -363,17 +343,10 @@ async function maintainMonthlyHistory(providerId: string, lastTs: number, nowTs:
   const lastYearMonths = months.filter((m) => m.startsWith(`${lastYear}-`));
 
   if (lastYearMonths.length > 0) {
-    let sum = 0;
     for (const m of lastYearMonths) {
-      const mKey = `month:${m}:${providerId}`;
-      const obj = await getSync(mKey);
-      const rawVal = obj[mKey];
-      const v = typeof rawVal === "number" ? rawVal : 0;
-      sum += v;
-      await delSync(mKey);
-    }
-    if (sum > 0) {
-      await incSync(`year:${lastYear}:${providerId}`, sum);
+      // Just delete — flushPendingToSync already wrote this data into year: keys in
+      // real-time, so adding it again here would double-count.
+      await delSync(`month:${m}:${providerId}`);
     }
     const keep = months.filter((m) => !lastYearMonths.includes(m));
     await setIndex("monthly", providerId, keep);

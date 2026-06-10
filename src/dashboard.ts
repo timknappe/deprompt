@@ -34,6 +34,21 @@ import type { Views } from "./types.js";
 import browser from "webextension-polyfill";
 ChartJS.register(BarController, BarElement, CategoryScale, LinearScale, PieController, ArcElement, Tooltip, Legend);
 
+const PROVIDER_SHORT_NAMES: Record<string, string> = {
+  openai: "ChatGPT",
+  anthropic: "Claude",
+  gemini: "Gemini",
+  copilot: "Copilot",
+  poe: "Poe",
+  perplexity: "Perplexity",
+  pi: "Pi",
+  reka: "Reka",
+  mistral: "Mistral",
+  grok: "Grok",
+  qwen: "Qwen",
+  meta: "Meta AI",
+};
+
 async function getDailyHistory(providerId?: string) {
   const today = dayjs();
   const weekStart = today.startOf("week").format("YYYY-MM-DD");
@@ -155,6 +170,41 @@ async function getYearlyHistory(providerId?: string) {
   return results.reverse();
 }
 
+async function getThisWeekTotal(): Promise<number> {
+  const data = await getDailyHistory();
+  return data.reduce((sum, d) => sum + d.value, 0);
+}
+
+async function getMostUsedProviderToday(): Promise<{ provider: string; ms: number } | null> {
+  const today = dayjs().format("YYYY-MM-DD");
+  const providers = await getActiveTrackedPlatformKeys();
+  let best: { provider: string; ms: number } | null = null;
+
+  for (const pid of providers) {
+    const key = `daily:${today}:${pid}`;
+    const obj = await browser.storage.sync.get(key);
+    const raw = obj[key];
+    if (typeof raw === "number" && raw > 0) {
+      if (!best || raw > best.ms) {
+        best = { provider: pid, ms: raw };
+      }
+    }
+  }
+
+  return best;
+}
+
+async function getActiveDaysThisWeek(): Promise<number> {
+  const data = await getDailyHistory();
+  return data.filter((d) => d.value > 0).length;
+}
+
+async function getLastWeekTotal(): Promise<number> {
+  const lastWeekStart = dayjs().startOf("week").subtract(1, "week").format("YYYY-MM-DD");
+  const raw = await sumForAllProviders(`week:${lastWeekStart}`);
+  return typeof raw === "number" ? raw : 0;
+}
+
 function freshCanvas(selector: string | HTMLElement): HTMLCanvasElement {
   const host = typeof selector === "string" ? document.querySelector(selector) : selector;
   if (!(host instanceof HTMLElement)) {
@@ -209,8 +259,16 @@ export async function renderProviderBreakdownChart(viewType: Views = "alltime"):
       maintainAspectRatio: false,
       animation: true,
       plugins: {
-        legend: { position: "left" },
-        title: { display: true, text: "Usage breakdown" },
+        legend: {
+          position: "left",
+          labels: {
+            color: "#888",
+            font: { size: 11 },
+            boxWidth: 10,
+            padding: 8,
+          },
+        },
+        title: { display: false },
         tooltip: {
           callbacks: {
             label(context) {
@@ -280,14 +338,14 @@ async function renderUsageChart(viewType: Views): Promise<void> {
     labels,
     datasets: [
       {
-        label: "Time spent (minutes)",
+        label: "Time spent",
         data: await getChartDataByViewType(viewType),
         backgroundColor: DEFAULT_PROVIDER_COLOR,
         borderColor: "transparent",
         hoverBackgroundColor: DEFAULT_PROVIDER_HOVER_COLOR,
         hoverBorderColor: "transparent",
         borderWidth: 1,
-        borderRadius: 8,
+        borderRadius: 6,
       },
     ],
   };
@@ -304,27 +362,35 @@ async function renderUsageChart(viewType: Views): Promise<void> {
       animation: false,
       plugins: {
         legend: { display: false },
-        title: { display: true, text: "Usage breakdown" },
+        title: { display: false },
         tooltip: {
           callbacks: {
             label(context) {
               const valueMs = context.raw as number;
               const displayTime = renderTimeSynchronously(formatTime(valueMs), true);
 
-              return `${context.label}: ${displayTime}`;
+              return displayTime;
             },
           },
         },
       },
       scales: {
-        x: { grid: { display: false } },
+        x: {
+          grid: { display: false },
+          ticks: { color: "#666", font: { size: 11 } },
+          border: { display: false },
+        },
         y: {
           beginAtZero: true,
+          grid: { color: "rgba(255,255,255,0.04)" },
+          border: { display: false },
           ticks: {
+            color: "#555",
+            font: { size: 11 },
             callback(value) {
               return renderTimeSynchronously(formatTime(Number(value)), true);
             },
-            maxTicksLimit: 3,
+            maxTicksLimit: 4,
           },
         },
       },
@@ -346,8 +412,6 @@ function handleViewChange(event: Event): void {
   void updateCharts(currentViewType);
 }
 
-// #endregion
-
 document.addEventListener("DOMContentLoaded", () => {
   const radios = document.querySelectorAll<HTMLInputElement>('input[name="viewType"]');
   radios.forEach((radio) => {
@@ -359,18 +423,50 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function setStandardUsage(): Promise<void> {
+  // Today
   const todayTotal = await getTodayUsage();
-  const time = formatTime(todayTotal);
   const todayUsageElem = document.getElementById("today-usage");
   if (todayUsageElem) {
-    todayUsageElem.textContent = await renderTime(time);
+    todayUsageElem.textContent = await renderTime(formatTime(todayTotal));
   }
 
-  const allTimeTotal = await sumForAllProviders("alltime"); // TODO see if we can fix the slight disparity caused by the chrome focus issue
-  const allTimeFormatted = formatTime(allTimeTotal);
+  // This week
+  const weekTotal = await getThisWeekTotal();
+  const weekUsageElem = document.getElementById("week-usage");
+  if (weekUsageElem) {
+    weekUsageElem.textContent = await renderTime(formatTime(weekTotal));
+  }
+
+  // All time
+  const allTimeTotal = await sumForAllProviders("alltime");
   const allTimeUsageElem = document.getElementById("alltime-usage");
   if (allTimeUsageElem) {
-    allTimeUsageElem.textContent = await renderTime(allTimeFormatted);
+    allTimeUsageElem.textContent = await renderTime(formatTime(allTimeTotal));
+  }
+
+  // Top AI today
+  const topAi = await getMostUsedProviderToday();
+  const topAiElem = document.getElementById("top-ai-today");
+  const topAiTimeElem = document.getElementById("top-ai-today-time");
+  if (topAiElem) {
+    topAiElem.textContent = topAi ? (PROVIDER_SHORT_NAMES[topAi.provider] ?? topAi.provider) : "—";
+  }
+  if (topAiTimeElem) {
+    topAiTimeElem.textContent = topAi ? await renderTime(formatTime(topAi.ms)) : "";
+  }
+
+  // Active days this week
+  const activeDays = await getActiveDaysThisWeek();
+  const activeDaysElem = document.getElementById("active-days");
+  if (activeDaysElem) {
+    activeDaysElem.textContent = `${activeDays} of 7`;
+  }
+
+  // Last week total
+  const lastWeek = await getLastWeekTotal();
+  const lastWeekElem = document.getElementById("last-week-usage");
+  if (lastWeekElem) {
+    lastWeekElem.textContent = lastWeek > 0 ? await renderTime(formatTime(lastWeek)) : "—";
   }
 }
 
