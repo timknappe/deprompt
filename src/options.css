@@ -1,4 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+@font-face {
+  font-family: "Inter";
+  src: url("./fonts/Inter-VariableFont_opsz,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 ::selection {
   background: #7c4dff;
@@ -75,12 +81,31 @@ input[type="time"] {
   color: #ddd;
   border: 1px solid #555;
   border-radius: 6px;
-  padding: 5px 8px;
+  padding: 6px 10px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+}
+
+input[type="time"] {
+  width: 110px;
+  color-scheme: dark;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.6) sepia(1) saturate(3) hue-rotate(220deg);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 input:focus {
   outline: none;
   border-color: #7c4dff;
+  box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.15);
 }
 
 .button {
@@ -127,14 +152,61 @@ input:focus {
 }
 
 .block-time-entry {
-  background: rgba(50, 50, 50, 0.8);
-  border: 1px solid #555;
-  padding: 8px 10px;
-  border-radius: 6px;
-  margin-top: 6px;
+  background: rgba(50, 50, 50, 0.6);
+  border: 1px solid rgba(100, 100, 100, 0.4);
+  padding: 9px 12px;
+  border-radius: 8px;
+  margin-top: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: border-color 0.15s;
+}
+
+.block-time-entry:hover {
+  border-color: rgba(124, 77, 255, 0.4);
+}
+
+.time-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-badge {
+  background: rgba(124, 77, 255, 0.12);
+  color: #b3aaff;
+  padding: 3px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.time-arrow {
+  color: #666;
+  font-size: 13px;
+}
+
+.time-add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.time-add .time-sep {
+  color: #888;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.button.small {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 5px;
 }
 
 .button.danger {

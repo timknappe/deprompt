@@ -88,7 +88,7 @@ snoozeButton.addEventListener("click", async () => {
 
   if ((await isBlocked()) && snoozeState === false) {
     setButtonBlock(button, true);
-  } else if ((await isBlocked) && snoozeState === true) {
+  } else if ((await isBlocked()) && snoozeState === true) {
     setButtonBlock(button, false);
   }
 });

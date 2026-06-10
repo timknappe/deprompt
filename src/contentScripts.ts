@@ -59,31 +59,27 @@ export async function isReminderPopupInjected(tabId: number): Promise<boolean> {
 // #region ejection
 
 export async function ejectBlockPopup(tabId: number): Promise<void> {
-  try {
-    await browser.scripting.executeScript({
-      target: { tabId },
-      func: (jsFlag: string) => {
-        document.getElementById(jsFlag)?.remove();
-      },
-      args: [BLOCKER_CONTENT_SCRIPT.js_flag],
-    });
-  } catch (err) {
+  await browser.scripting.executeScript({
+    target: { tabId },
+    func: (jsFlag: string) => {
+      document.getElementById(jsFlag)?.remove();
+    },
+    args: [BLOCKER_CONTENT_SCRIPT.js_flag],
+  }).catch((err: unknown) => {
     console.error("Failed to remove block popup", err);
-  }
+  });
 }
 
 export async function ejectReminderPopup(tabId: number): Promise<void> {
-  try {
-    await browser.scripting.executeScript({
-      target: { tabId },
-      func: (jsFlag: string) => {
-        document.getElementById(jsFlag)?.remove();
-      },
-      args: [REMINDER_CONTENT_SCRIPT.js_flag],
-    });
-  } catch (err) {
+  await browser.scripting.executeScript({
+    target: { tabId },
+    func: (jsFlag: string) => {
+      document.getElementById(jsFlag)?.remove();
+    },
+    args: [REMINDER_CONTENT_SCRIPT.js_flag],
+  }).catch((err: unknown) => {
     console.error("Failed to remove reminder popup", err);
-  }
+  });
 }
 
 // #endregion

@@ -715,6 +715,7 @@ export async function initializeDefaults() {
     "settings:timeLimit",
     "settings:notification:daily",
     "settings:notification:continuous",
+    "settings:notification:howOften",
     "settings:providers",
     "settings:tracking:countUnfocused",
   ]);
@@ -754,6 +755,16 @@ export async function initializeDefaults() {
     typeof (continuous as { minutes?: unknown }).minutes !== "number"
   ) {
     updates["settings:notification:continuous"] = DEFAULT_SETTINGS.notifications.continuous;
+  }
+
+  const howOften = existing["settings:notification:howOften"];
+  if (
+    howOften === undefined ||
+    typeof howOften !== "object" ||
+    howOften === null ||
+    typeof (howOften as { minutes?: unknown }).minutes !== "number"
+  ) {
+    updates["settings:notification:howOften"] = DEFAULT_SETTINGS.notifications.howOften;
   }
 
   const providers = existing["settings:providers"];
@@ -908,6 +919,16 @@ export async function persistActiveDuration(): Promise<void> {
       now,
     });
   }
+}
+
+export async function getHowOftenNotificationSetting(): Promise<{ enabled: boolean; minutes: number }> {
+  const { ["settings:notification:howOften"]: howOften } = await browser.storage.sync.get(
+    "settings:notification:howOften",
+  );
+  if (typeof howOften === "object" && howOften !== null) {
+    return howOften as { enabled: boolean; minutes: number };
+  }
+  return DEFAULT_SETTINGS.notifications.howOften;
 }
 
 export async function getContinousUsageNotificationLimit() {

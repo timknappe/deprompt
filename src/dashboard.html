@@ -9,12 +9,13 @@
   <body>
     <header id="header" class="card">
       <div id="header-left">
-        <span class="logo-text">deprompt</span>
-        <span class="logo-badge">dashboard</span>
+        <img src="../assets/logo.png" class="logo-img" alt="deprompt" />
       </div>
 
       <div id="radio-area">
-        <label class="radio-label"><input type="radio" name="viewType" value="weekly" checked /><span>Weekly</span></label>
+        <label class="radio-label"
+          ><input type="radio" name="viewType" value="weekly" checked /><span>Weekly</span></label
+        >
         <label class="radio-label"><input type="radio" name="viewType" value="monthly" /><span>Monthly</span></label>
         <label class="radio-label"><input type="radio" name="viewType" value="yearly" /><span>Yearly</span></label>
         <label class="radio-label"><input type="radio" name="viewType" value="alltime" /><span>All Time</span></label>
@@ -34,17 +35,17 @@
           <div class="stat-value" id="today-usage">—</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">This Week</div>
-          <div class="stat-value" id="week-usage">—</div>
+          <div class="stat-label" id="period-label">This Week</div>
+          <div class="stat-value" id="period-usage">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="top-ai-label">Top AI This Week</div>
+          <div class="stat-value" id="top-ai-today">—</div>
+          <div class="stat-sub" id="top-ai-today-time"></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">All Time</div>
           <div class="stat-value" id="alltime-usage">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Top AI Today</div>
-          <div class="stat-value" id="top-ai-today">—</div>
-          <div class="stat-sub" id="top-ai-today-time"></div>
         </div>
       </section>
 
@@ -75,8 +76,18 @@
         <div class="secondary-stat actions-stat">
           <span class="secondary-label">Quick Actions</span>
           <div id="button-group">
-            <button id="dashboard-block" class="button primary">Block Now</button>
-            <button id="dashboard-snooze" class="button primary">Snooze</button>
+            <button id="dashboard-block" class="button primary">Block</button>
+            <button
+              id="dashboard-snooze-block"
+              class="button primary"
+              title="Temporarily lift an active block for 5 minutes"
+              disabled
+            >
+              Snooze block
+            </button>
+            <button id="dashboard-toggle" class="button primary" title="Disable all blockers for the rest of today">
+              Toggle
+            </button>
           </div>
         </div>
       </section>

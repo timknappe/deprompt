@@ -7,6 +7,7 @@ import {
   getContinousUsageNotificationLimit,
   getCurrentProviderDuration,
   getFixedBlockDurations,
+  getHowOftenNotificationSetting,
   getManualBlock,
   getMaxmimumUsageTime,
   getTodayUsage,
@@ -128,51 +129,19 @@ export function renderTimeSynchronously(time: UsageTime, showSeconds: boolean) {
   return `${time[0]}h ${time[1]}m ${showSeconds ? `${time[2]}s` : ""}`;
 }
 
-export async function isBlocked(addActiveTime: boolean = false): Promise<boolean> {
-  // If user toggled a block, we shouldnt block
-  if (await isBlockToggledOff()) {
-    return false;
-  }
-  if (await isSnoozed()) {
-    return false;
-  }
-
+/**
+ * Resolves which block is in effect right now, ignoring the temporary unblock
+ * toggle and the daily snooze. Use this when you need to know whether a block
+ * exists at all (e.g. to decide if the "snooze block" action is available).
+ * @param {boolean} addActiveTime - Whether to include the live, unpersisted session time.
+ * @returns {Promise<Blockers | null>} The active block type, or null when nothing blocks.
+ */
+async function resolveActiveBlockType(addActiveTime: boolean): Promise<Blockers | null> {
   const blockDurations = await getFixedBlockDurations();
 
   for (let i = 0; i < blockDurations.length; i++) {
-    // optimize
     const [start, end] = destructFixedBlocker(blockDurations, i);
-    console.log("FIXED_BLOCKERS");
-    console.log(start, end);
-    const now = dayjs();
-    console.log(now);
-    console.log(now.isBetween(start, end));
-    if (now.isBetween(start, end)) {
-      return true;
-    }
-  }
-
-  if (await getManualBlock()) return true;
-
-  const remainingUsage = await getRemainingUsageTime(addActiveTime);
-  if (remainingUsage !== null) {
-    return remainingUsage <= 0 ? true : false;
-  }
-  return false;
-}
-
-export async function getCurrentBlockType(addActiveTime: boolean = false): Promise<Blockers | null> {
-  if (!(await isBlocked(addActiveTime))) {
-    return null;
-  }
-
-  const blockDurations = await getFixedBlockDurations();
-
-  for (let i = 0; i < blockDurations.length; i++) {
-    // optimize
-    const [start, end] = destructFixedBlocker(blockDurations, i);
-    const now = dayjs();
-    if (now.isBetween(start, end)) {
+    if (dayjs().isBetween(start, end)) {
       return "FixedBlockTime";
     }
   }
@@ -184,6 +153,36 @@ export async function getCurrentBlockType(addActiveTime: boolean = false): Promi
     return remainingUsage <= 0 ? "TimeLimit" : null;
   }
   return null;
+}
+
+/**
+ * Whether a block is currently in effect, ignoring the daily snooze and the
+ * temporary 5-minute unblock toggle.
+ * @param {boolean} addActiveTime - Whether to include the live, unpersisted session time.
+ * @returns {Promise<boolean>} True when a fixed/manual/time-limit block applies.
+ */
+export async function hasActiveBlock(addActiveTime: boolean = false): Promise<boolean> {
+  return (await resolveActiveBlockType(addActiveTime)) !== null;
+}
+
+export async function isBlocked(addActiveTime: boolean = false): Promise<boolean> {
+  // A temporary toggle or a daily snooze suppresses any active block.
+  if (await isBlockToggledOff()) {
+    return false;
+  }
+  if (await isSnoozed()) {
+    return false;
+  }
+
+  return hasActiveBlock(addActiveTime);
+}
+
+export async function getCurrentBlockType(addActiveTime: boolean = false): Promise<Blockers | null> {
+  if (!(await isBlocked(addActiveTime))) {
+    return null;
+  }
+
+  return resolveActiveBlockType(addActiveTime);
 }
 
 export const setButtonBlock = (button: HTMLElement, isBlocked: boolean) => {
@@ -231,10 +230,14 @@ export async function scheduleWindowUI(): Promise<WindowUiNotifications> {
       }
     }
   }
+  const howOften = await getHowOftenNotificationSetting();
+  // enabled = repeat every N minutes; disabled = show at most once per day
+  const reminderCooldownSeconds = howOften.enabled ? howOften.minutes * 60 : 24 * 60 * 60;
+
   const maxContinousUsage = await getContinousUsageNotificationLimit();
 
   if (maxContinousUsage !== null && maxContinousUsage - (await getCurrentProviderDuration()) <= 0) {
-    if ((await checkLastReminderSent("ContinuousUsageReminder")) >= 600) {
+    if ((await checkLastReminderSent("ContinuousUsageReminder")) >= reminderCooldownSeconds) {
       return "ContinuousUsageReminder";
     }
   }
@@ -242,7 +245,7 @@ export async function scheduleWindowUI(): Promise<WindowUiNotifications> {
   const maxDailyUsage = await checkDailyUsageReminderDuration();
   if (maxDailyUsage !== null) {
     if (maxDailyUsage - (await getTodayUsage(true)) < 0) {
-      if ((await checkLastReminderSent("DailyUsageReminder")) >= 600) {
+      if ((await checkLastReminderSent("DailyUsageReminder")) >= reminderCooldownSeconds) {
         return "DailyUsageReminder";
       }
     }

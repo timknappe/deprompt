@@ -5,10 +5,7 @@ export type ProviderId =
   | "anthropic"
   | "gemini"
   | "copilot"
-  | "poe"
   | "perplexity"
-  | "pi"
-  | "reka"
   | "mistral"
   | "qwen"
   | "meta"
@@ -39,6 +36,7 @@ export type SettingsState = {
   notifications: {
     daily: ToggleableDurationSetting;
     continuous: ToggleableDurationSetting;
+    howOften: ToggleableDurationSetting;
   };
   block: { fixedTime: string[] };
   providers: ProviderSelections;

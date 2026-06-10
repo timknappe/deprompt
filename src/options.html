@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -47,9 +47,9 @@
 
               <div class="time-add">
                 <input type="time" id="blockStart" />
-                <span>to</span>
+                <span class="time-sep">to</span>
                 <input type="time" id="blockEnd" />
-                <button id="addBlockBtn" type="button" class="button primary">Add</button>
+                <button id="addBlockBtn" type="button" class="button primary">Add block</button>
               </div>
 
               <div class="field-error" id="timeError"></div>
@@ -89,6 +89,19 @@
                 <span>minutes in a single session</span>
               </div>
             </div>
+
+            <div class="input-column">
+              <label class="inline-option">
+                <input type="checkbox" id="howOftenNotifyToggle" />
+                Repeat reminders
+              </label>
+
+              <div class="row-input">
+                <span>Every</span>
+                <input type="number" id="howOftenNotifyMinutes" name="howOftenNotifyMinutes" min="1" step="1" />
+                <span>minutes</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -102,7 +115,7 @@
             Show seconds in time values
           </label>
 
-          <h4 style="margin-top: 16px;">Tracking Behavior</h4>
+          <h4 style="margin-top: 16px">Tracking Behavior</h4>
           <label class="inline-option">
             <input type="checkbox" id="countUnfocusedToggle" />
             Count time when browser window is open but not focused

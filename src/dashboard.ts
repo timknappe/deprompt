@@ -12,22 +12,18 @@ import {
 } from "chart.js";
 import { VIEW_TYPES, LABELS_BY_VIEW, DEFAULT_PROVIDER_HOVER_COLOR, PROVIDER_COLOR_TEST } from "./constants.js";
 import { DEFAULT_PROVIDER_COLOR, MAX_WEEKS_TO_KEEP } from "./constants.js";
-import {
-  formatTime,
-  getCurrentBlockType,
-  isBlocked,
-  renderTime,
-  renderTimeSynchronously,
-  setButtonBlock,
-} from "./helpers.js";
+import { formatTime, hasActiveBlock, renderTime, renderTimeSynchronously } from "./helpers.js";
 import {
   getActiveTrackedPlatformKeys,
   getActiveTrackedPlatformUsage,
+  getManualBlock,
   getTodayUsage,
+  isBlockToggledOff,
   isSnoozed,
   setBlockToggle,
   setSnooze,
   sumForAllProviders,
+  unsetBlockToggle,
 } from "./storageManager.js";
 import dayjs from "dayjs";
 import type { Views } from "./types.js";
@@ -175,19 +171,99 @@ async function getThisWeekTotal(): Promise<number> {
   return data.reduce((sum, d) => sum + d.value, 0);
 }
 
-async function getMostUsedProviderToday(): Promise<{ provider: string; ms: number } | null> {
-  const today = dayjs().format("YYYY-MM-DD");
+const PERIOD_LABELS: Record<string, string> = {
+  weekly: "This Week",
+  monthly: "This Month",
+  yearly: "This Year",
+  alltime: "All Time",
+};
+
+const TOP_AI_PERIOD_LABELS: Record<string, string> = {
+  weekly: "Top AI This Week",
+  monthly: "Top AI This Month",
+  yearly: "Top AI This Year",
+  alltime: "Top AI All Time",
+};
+
+async function getPeriodTotal(viewType: Views): Promise<number> {
+  switch (viewType) {
+    case "weekly": {
+      const data = await getDailyHistory();
+      return data.reduce((sum, d) => sum + d.value, 0);
+    }
+    case "monthly": {
+      const data = await getWeeklyHistory(MAX_WEEKS_TO_KEEP);
+      return data.reduce((sum, d) => sum + d.value, 0);
+    }
+    case "yearly": {
+      const data = await getMonthlyHistory();
+      return data.reduce((sum, d) => sum + d.value, 0);
+    }
+    case "alltime": {
+      const raw = await sumForAllProviders("alltime");
+      return typeof raw === "number" ? raw : 0;
+    }
+  }
+}
+
+async function getMostUsedProviderForView(viewType: Views): Promise<{ provider: string; ms: number } | null> {
   const providers = await getActiveTrackedPlatformKeys();
   let best: { provider: string; ms: number } | null = null;
 
   for (const pid of providers) {
-    const key = `daily:${today}:${pid}`;
-    const obj = await browser.storage.sync.get(key);
-    const raw = obj[key];
-    if (typeof raw === "number" && raw > 0) {
-      if (!best || raw > best.ms) {
-        best = { provider: pid, ms: raw };
+    let total = 0;
+
+    switch (viewType) {
+      case "weekly": {
+        const weekStart = dayjs().startOf("week");
+        for (let i = 0; i < 7; i++) {
+          const dateKey = weekStart.add(i, "day").format("YYYY-MM-DD");
+          if (dayjs(dateKey).isAfter(dayjs())) break;
+          const key = `daily:${dateKey}:${pid}`;
+          const obj = await browser.storage.sync.get(key);
+          const raw = obj[key];
+          if (typeof raw === "number") total += raw;
+        }
+        break;
       }
+      case "monthly": {
+        const startWeek = dayjs().startOf("week").subtract(MAX_WEEKS_TO_KEEP - 1, "week");
+        for (let i = 0; i < MAX_WEEKS_TO_KEEP; i++) {
+          const w = startWeek.add(i, "week").format("YYYY-MM-DD");
+          const key = `week:${w}:${pid}`;
+          const obj = await browser.storage.sync.get(key);
+          const raw = obj[key];
+          if (typeof raw === "number") total += raw;
+        }
+        break;
+      }
+      case "yearly": {
+        const year = dayjs().year();
+        for (let m = 0; m < 12; m++) {
+          const monthStr = dayjs().year(year).month(m).format("YYYY-MM");
+          const key = `month:${monthStr}:${pid}`;
+          const obj = await browser.storage.sync.get(key);
+          const raw = obj[key];
+          if (typeof raw === "number") total += raw;
+        }
+        break;
+      }
+      case "alltime": {
+        let y = dayjs().year();
+        while (true) {
+          const key = `year:${y}:${pid}`;
+          const obj = await browser.storage.sync.get(key);
+          const raw = obj[key];
+          if (typeof raw !== "number") break;
+          total += raw;
+          y -= 1;
+        }
+        break;
+      }
+    }
+
+    if (total > 0 && (!best || total > best.ms)) {
+      best = { provider: pid, ms: total };
     }
   }
 
@@ -403,6 +479,24 @@ async function updateCharts(viewType: Views): Promise<void> {
   await renderProviderBreakdownChart(viewType);
 }
 
+async function updateViewDependentStats(viewType: Views): Promise<void> {
+  const periodLabelElem = document.getElementById("period-label");
+  if (periodLabelElem) periodLabelElem.textContent = PERIOD_LABELS[viewType] ?? "This Week";
+
+  const topAiLabelElem = document.getElementById("top-ai-label");
+  if (topAiLabelElem) topAiLabelElem.textContent = TOP_AI_PERIOD_LABELS[viewType] ?? "Top AI This Week";
+
+  const periodTotal = await getPeriodTotal(viewType);
+  const periodUsageElem = document.getElementById("period-usage");
+  if (periodUsageElem) periodUsageElem.textContent = await renderTime(formatTime(periodTotal));
+
+  const topAi = await getMostUsedProviderForView(viewType);
+  const topAiElem = document.getElementById("top-ai-today");
+  const topAiTimeElem = document.getElementById("top-ai-today-time");
+  if (topAiElem) topAiElem.textContent = topAi ? (PROVIDER_SHORT_NAMES[topAi.provider] ?? topAi.provider) : "—";
+  if (topAiTimeElem) topAiTimeElem.textContent = topAi ? await renderTime(formatTime(topAi.ms)) : "";
+}
+
 function handleViewChange(event: Event): void {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
@@ -410,6 +504,7 @@ function handleViewChange(event: Event): void {
   if (!isViewType(value)) return;
   currentViewType = value;
   void updateCharts(currentViewType);
+  void updateViewDependentStats(currentViewType);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -419,110 +514,123 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   void setStandardUsage();
+  void updateViewDependentStats(currentViewType);
   void updateCharts(currentViewType);
 });
 
 async function setStandardUsage(): Promise<void> {
-  // Today
   const todayTotal = await getTodayUsage();
   const todayUsageElem = document.getElementById("today-usage");
-  if (todayUsageElem) {
-    todayUsageElem.textContent = await renderTime(formatTime(todayTotal));
-  }
+  if (todayUsageElem) todayUsageElem.textContent = await renderTime(formatTime(todayTotal));
 
-  // This week
-  const weekTotal = await getThisWeekTotal();
-  const weekUsageElem = document.getElementById("week-usage");
-  if (weekUsageElem) {
-    weekUsageElem.textContent = await renderTime(formatTime(weekTotal));
-  }
-
-  // All time
   const allTimeTotal = await sumForAllProviders("alltime");
   const allTimeUsageElem = document.getElementById("alltime-usage");
-  if (allTimeUsageElem) {
-    allTimeUsageElem.textContent = await renderTime(formatTime(allTimeTotal));
-  }
+  if (allTimeUsageElem) allTimeUsageElem.textContent = await renderTime(formatTime(allTimeTotal));
 
-  // Top AI today
-  const topAi = await getMostUsedProviderToday();
-  const topAiElem = document.getElementById("top-ai-today");
-  const topAiTimeElem = document.getElementById("top-ai-today-time");
-  if (topAiElem) {
-    topAiElem.textContent = topAi ? (PROVIDER_SHORT_NAMES[topAi.provider] ?? topAi.provider) : "—";
-  }
-  if (topAiTimeElem) {
-    topAiTimeElem.textContent = topAi ? await renderTime(formatTime(topAi.ms)) : "";
-  }
-
-  // Active days this week
   const activeDays = await getActiveDaysThisWeek();
   const activeDaysElem = document.getElementById("active-days");
-  if (activeDaysElem) {
-    activeDaysElem.textContent = `${activeDays} of 7`;
-  }
+  if (activeDaysElem) activeDaysElem.textContent = `${activeDays} of 7`;
 
-  // Last week total
   const lastWeek = await getLastWeekTotal();
   const lastWeekElem = document.getElementById("last-week-usage");
-  if (lastWeekElem) {
-    lastWeekElem.textContent = lastWeek > 0 ? await renderTime(formatTime(lastWeek)) : "—";
-  }
+  if (lastWeekElem) lastWeekElem.textContent = lastWeek > 0 ? await renderTime(formatTime(lastWeek)) : "—";
 }
 
-const block_button = document.getElementById("dashboard-block")!;
-const snooze_button = document.getElementById("dashboard-snooze")!;
+const block_button = document.getElementById("dashboard-block") as HTMLButtonElement;
+const snooze_block_button = document.getElementById("dashboard-snooze-block") as HTMLButtonElement;
+const toggle_button = document.getElementById("dashboard-toggle") as HTMLButtonElement;
+
+/** Snapshot of every override that influences the block controls. */
+export type BlockControlState = {
+  /** Manual block setting (`settings:block:manual`). */
+  manualBlock: boolean;
+  /** All-day "Toggle" that disables every blocker (`isSnoozed`). */
+  dayToggledOff: boolean;
+  /** 5-minute "Snooze block" that lifts an active block (`isBlockToggledOff`). */
+  snoozeActive: boolean;
+  /** Whether a block is in effect, ignoring the two overrides above. */
+  blockActive: boolean;
+};
+
+/** How a single button should be rendered. */
+export type ButtonView = { text: string; danger: boolean; disabled: boolean };
+
+export type BlockControlsView = { block: ButtonView; toggle: ButtonView; snoozeBlock: ButtonView };
+
+/**
+ * Pure mapping from the stored override state to how each of the three controls
+ * should look. Each button maps to one independent piece of state so the
+ * controls can't fall out of sync:
+ *  - Block: turns the manual block on/off.
+ *  - Snooze block: temporarily lifts an active block for 5 minutes; only usable
+ *    while a block is actually in effect and the day isn't toggled off.
+ *  - Toggle: disables every blocker for the rest of today.
+ *
+ * Note: the storage helpers are named the opposite of the UI vocabulary —
+ * `isBlockToggledOff()`/`setBlockToggle()` back the 5-minute "Snooze block",
+ * while `isSnoozed()`/`setSnooze()` back the all-day "Toggle".
+ */
+export function computeBlockControls(state: BlockControlState): BlockControlsView {
+  // The snooze only makes sense while a block is actually in effect, and the
+  // all-day toggle already suppresses every block, so the snooze has nothing to
+  // act on while the toggle is on. Only show "Resume block" when the snooze is
+  // both active and still actionable, so a disabled button never lies.
+  const canSnoozeBlock = state.blockActive && !state.dayToggledOff;
+  const showResume = state.snoozeActive && canSnoozeBlock;
+
+  return {
+    block: { text: state.manualBlock ? "Unblock" : "Block", danger: state.manualBlock, disabled: false },
+    toggle: { text: state.dayToggledOff ? "Untoggle" : "Toggle", danger: state.dayToggledOff, disabled: false },
+    snoozeBlock: {
+      text: showResume ? "Resume block" : "Snooze block",
+      danger: showResume,
+      disabled: !canSnoozeBlock,
+    },
+  };
+}
+
+function applyButtonView(button: HTMLButtonElement, view: ButtonView): void {
+  button.textContent = view.text;
+  button.classList.toggle("danger", view.danger);
+  button.disabled = view.disabled;
+}
+
+/** Reads the current override state and re-renders all three block controls. */
+export async function refreshBlockControls(): Promise<void> {
+  const [manualBlock, dayToggledOff, snoozeActive, blockActive] = await Promise.all([
+    getManualBlock(),
+    isSnoozed(), // all-day "Toggle"
+    isBlockToggledOff(), // 5-minute "Snooze block"
+    hasActiveBlock(true),
+  ]);
+
+  const view = computeBlockControls({ manualBlock, dayToggledOff, snoozeActive, blockActive });
+  applyButtonView(block_button, view.block);
+  applyButtonView(toggle_button, view.toggle);
+  applyButtonView(snooze_block_button, view.snoozeBlock);
+}
 
 block_button.addEventListener("click", async () => {
-  const curentBlockReason = await getCurrentBlockType(true);
-  if (curentBlockReason === "ManualBlock" || curentBlockReason === null) {
-    await browser.storage.sync.set({
-      "settings:block:manual": !(await isBlocked(true)),
-    });
-    const blockState: boolean = await isBlocked(true);
-    block_button.textContent = blockState ? "Unblock" : "Block";
-    block_button.classList.toggle("danger", blockState);
+  await browser.storage.sync.set({
+    "settings:block:manual": !(await getManualBlock()),
+  });
+  await refreshBlockControls();
+});
+
+toggle_button.addEventListener("click", async () => {
+  await setSnooze();
+  await refreshBlockControls();
+});
+
+snooze_block_button.addEventListener("click", async () => {
+  if (await isBlockToggledOff()) {
+    await unsetBlockToggle();
   } else {
     await setBlockToggle();
-    const blockState: boolean = await isBlocked(true);
-    block_button.textContent = blockState ? "Toggle block (5 minutes)" : "Block";
-    block_button.classList.toggle("danger", blockState);
   }
+  await refreshBlockControls();
 });
 
-snooze_button.addEventListener("click", async () => {
-  await setSnooze();
-  const snoozeState = await isSnoozed();
-
-  snooze_button.textContent = snoozeState ? "Unsnooze" : "Snooze for today";
-  snooze_button.classList.toggle("danger", snoozeState);
-
-  if (snoozeState === true) {
-    (block_button as HTMLButtonElement).disabled = true;
-  } else {
-    (block_button as HTMLButtonElement).disabled = false;
-  }
-
-  if ((await isBlocked()) && snoozeState === false) {
-    setButtonBlock(block_button, true);
-  } else if ((await isBlocked) && snoozeState === true) {
-    setButtonBlock(block_button, false);
-  }
-});
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const blocked: boolean = await isBlocked(true);
-  const blockReason = await getCurrentBlockType(true);
-
-  if (blockReason === "ManualBlock") {
-    block_button.textContent = blocked ? "Unblock" : "Block";
-    block_button.classList.toggle("danger", blocked);
-  } else {
-    block_button.textContent = blocked ? "Toggle block (5 minutes)" : "Block";
-    block_button.classList.toggle("danger", blocked);
-  }
-
-  const snoozeState = await isSnoozed();
-  snooze_button.textContent = snoozeState ? "Unsnooze" : "Snooze for today";
-  snooze_button.classList.toggle("danger", !!snoozeState);
+document.addEventListener("DOMContentLoaded", () => {
+  void refreshBlockControls();
 });

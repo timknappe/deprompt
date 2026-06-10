@@ -40,6 +40,9 @@ async function loadSettings(): Promise<SettingsState> {
   const continuousRaw = result[STORAGE_KEYS.notificationContinuous];
   const continuousObj =
     typeof continuousRaw === "object" && continuousRaw ? (continuousRaw as Partial<ToggleableDurationSetting>) : {};
+  const howOftenRaw = result[STORAGE_KEYS.notificationHowOften];
+  const howOftenObj =
+    typeof howOftenRaw === "object" && howOftenRaw ? (howOftenRaw as Partial<ToggleableDurationSetting>) : {};
   const blockFixedRaw = result[STORAGE_KEYS.blockFixedTime];
   const blockFixed = Array.isArray(blockFixedRaw)
     ? (blockFixedRaw as unknown[]).filter((entry): entry is string => typeof entry === "string")
@@ -67,10 +70,8 @@ async function loadSettings(): Promise<SettingsState> {
     timeLimit: normalizedTimeLimit,
     notifications: {
       daily: { ...DEFAULT_SETTINGS.notifications.daily, ...dailyObj },
-      continuous: {
-        ...DEFAULT_SETTINGS.notifications.continuous,
-        ...continuousObj,
-      },
+      continuous: { ...DEFAULT_SETTINGS.notifications.continuous, ...continuousObj },
+      howOften: { ...DEFAULT_SETTINGS.notifications.howOften, ...howOftenObj },
     },
     block: { fixedTime: blockFixed },
     providers: {
@@ -129,11 +130,31 @@ function toggleNotificationInputs(type: "daily" | "continuous", enabled: boolean
   }
 }
 
+function updateHowOftenSectionState(): void {
+  const dailyToggle = document.getElementById("dailyNotifyToggle");
+  const continuousToggle = document.getElementById("continuousNotifyToggle");
+  const howOftenToggle = document.getElementById("howOftenNotifyToggle");
+  const howOftenMinutes = document.getElementById("howOftenNotifyMinutes");
+
+  const anyNotificationEnabled =
+    (dailyToggle instanceof HTMLInputElement && dailyToggle.checked) ||
+    (continuousToggle instanceof HTMLInputElement && continuousToggle.checked);
+
+  if (howOftenToggle instanceof HTMLInputElement) {
+    howOftenToggle.disabled = !anyNotificationEnabled;
+    if (howOftenMinutes instanceof HTMLInputElement) {
+      howOftenMinutes.disabled = !anyNotificationEnabled || !howOftenToggle.checked;
+    }
+  }
+}
+
 const wireNotifications = (): void => {
   const dailyToggle = document.getElementById("dailyNotifyToggle");
   const dailyMinutes = document.getElementById("dailyNotifyMinutes");
   const continuousToggle = document.getElementById("continuousNotifyToggle");
   const continuousMinutes = document.getElementById("continuousNotifyMinutes");
+  const howOftenToggle = document.getElementById("howOftenNotifyToggle");
+  const howOftenMinutes = document.getElementById("howOftenNotifyMinutes");
 
   if (dailyToggle instanceof HTMLInputElement && dailyMinutes instanceof HTMLInputElement) {
     dailyToggle.addEventListener("change", async (event) => {
@@ -141,6 +162,7 @@ const wireNotifications = (): void => {
       if (!(target instanceof HTMLInputElement)) return;
       const enabled = target.checked;
       toggleNotificationInputs("daily", enabled);
+      updateHowOftenSectionState();
       await saveSetting(STORAGE_KEYS.notificationDaily, {
         enabled,
         minutes: Number(dailyMinutes.value) || 1,
@@ -164,6 +186,7 @@ const wireNotifications = (): void => {
       if (!(target instanceof HTMLInputElement)) return;
       const enabled = target.checked;
       toggleNotificationInputs("continuous", enabled);
+      updateHowOftenSectionState();
       await saveSetting(STORAGE_KEYS.notificationContinuous, {
         enabled,
         minutes: Number(continuousMinutes.value) || 1,
@@ -176,6 +199,29 @@ const wireNotifications = (): void => {
       continuousMinutes.value = String(minutes);
       await saveSetting(STORAGE_KEYS.notificationContinuous, {
         enabled: continuousToggle.checked,
+        minutes,
+      });
+    });
+  }
+
+  if (howOftenToggle instanceof HTMLInputElement && howOftenMinutes instanceof HTMLInputElement) {
+    howOftenToggle.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      const enabled = target.checked;
+      howOftenMinutes.disabled = !enabled;
+      await saveSetting(STORAGE_KEYS.notificationHowOften, {
+        enabled,
+        minutes: Number(howOftenMinutes.value) || 1,
+      });
+    });
+    howOftenMinutes.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      const minutes = Math.max(1, Number(target.value) || 0);
+      howOftenMinutes.value = String(minutes);
+      await saveSetting(STORAGE_KEYS.notificationHowOften, {
+        enabled: howOftenToggle.checked,
         minutes,
       });
     });
@@ -200,9 +246,13 @@ async function renderBlockRanges(ranges: string[]): Promise<void> {
     const start = startRaw.format("HH:mm");
     const end = endRaw.format("HH:mm");
     const row = document.createElement("div");
-    row.className = "time-row";
+    row.className = "block-time-entry";
     row.innerHTML = `
-      <span>${start} - ${end}</span>
+      <div class="time-range">
+        <span class="time-badge">${start}</span>
+        <span class="time-arrow">→</span>
+        <span class="time-badge">${end}</span>
+      </div>
       <button type="button" data-idx="${i}" class="button danger small">Remove</button>
     `;
     container.appendChild(row);
@@ -322,6 +372,13 @@ async function init() {
     settings.notifications.continuous.minutes,
     !settings.notifications.continuous.enabled
   );
+  setCheckboxState("howOftenNotifyToggle", settings.notifications.howOften.enabled);
+  setNumberInput(
+    "howOftenNotifyMinutes",
+    settings.notifications.howOften.minutes,
+    !settings.notifications.howOften.enabled
+  );
+  updateHowOftenSectionState();
   renderBlockRanges(currentBlockRanges);
 
   buildProviderList(settings.providers);
