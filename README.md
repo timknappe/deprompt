@@ -13,7 +13,6 @@ Deprompt runs entirely in the browser and provides the following core capabiliti
 
 - **Limits & blockers**  
   Allows users to define:
-
   - Time limits
   - Fixed blocking windows
   - Manual blocks
@@ -31,7 +30,6 @@ Deprompt currently supports a growing set of AI chat providers, including:
 - Anthropic Claude
 - Google Gemini
 - Microsoft Copilot
-- Poe
 - Perplexity
 - Meta AI
 - Mistral

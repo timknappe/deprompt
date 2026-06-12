@@ -35,10 +35,7 @@ const PROVIDER_SHORT_NAMES: Record<string, string> = {
   anthropic: "Claude",
   gemini: "Gemini",
   copilot: "Copilot",
-  poe: "Poe",
   perplexity: "Perplexity",
-  pi: "Pi",
-  reka: "Reka",
   mistral: "Mistral",
   grok: "Grok",
   qwen: "Qwen",
@@ -229,7 +226,9 @@ async function getMostUsedProviderForView(viewType: Views): Promise<{ provider: 
         break;
       }
       case "monthly": {
-        const startWeek = dayjs().startOf("week").subtract(MAX_WEEKS_TO_KEEP - 1, "week");
+        const startWeek = dayjs()
+          .startOf("week")
+          .subtract(MAX_WEEKS_TO_KEEP - 1, "week");
         for (let i = 0; i < MAX_WEEKS_TO_KEEP; i++) {
           const w = startWeek.add(i, "week").format("YYYY-MM-DD");
           const key = `week:${w}:${pid}`;
