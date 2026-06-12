@@ -43,6 +43,8 @@ const PROVIDER_SHORT_NAMES: Record<string, string> = {
   grok: "Grok",
   qwen: "Qwen",
   meta: "Meta AI",
+  deepseek: "DeepSeek",
+  moonshot: "Kimi",
 };
 
 async function getDailyHistory(providerId?: string) {

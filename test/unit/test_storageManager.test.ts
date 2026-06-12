@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import dayjs from "dayjs";
 import {
+  ALL_PROVIDER_IDS,
   DEFAULT_SETTINGS,
   STORAGE_KEYS,
   TARGET_DOMAINS,
@@ -71,6 +72,8 @@ const {
   getActiveTrackedPlatformKeys,
   getActiveTrackedPlatforms,
   getActiveTrackedPlatformUsage,
+  getAllProviderIds,
+  getCustomProvidersAdded,
   getContinousUsageNotificationLimit,
   getCountUnfocusedTime,
   getCurrentProviderDuration,
@@ -252,6 +255,78 @@ describe("provider settings + usage", () => {
     const usage = await getActiveTrackedPlatformUsage("alltime");
     expect(usage).toHaveLength(2);
     expect(usage.reduce((a, b) => a + b, 0)).toBe(16);
+  });
+});
+
+describe("custom providers integration", () => {
+  const claudeAdded = { claude: { name: "Claude", url: "https://claude.ai/*" } };
+
+  test("getCustomProvidersAdded parses valid entries and drops malformed ones", async () => {
+    syncStore[STORAGE_KEYS.customProvidersAdded] = {
+      ok: { name: "Ok", url: "https://ok.com/*" },
+      missingUrl: { name: "NoUrl" },
+      wrongTypes: { name: 1, url: 2 },
+      notAnObject: "nope",
+    };
+    const added = await getCustomProvidersAdded();
+    expect(Object.keys(added)).toEqual(["ok"]);
+    expect(added.ok).toEqual({ name: "Ok", url: "https://ok.com/*" });
+  });
+
+  test("getCustomProvidersAdded returns {} when nothing is stored", async () => {
+    expect(await getCustomProvidersAdded()).toEqual({});
+  });
+
+  test("getAllProviderIds appends custom ids to the built-in list", async () => {
+    syncStore[STORAGE_KEYS.customProvidersAdded] = {
+      claude: { name: "Claude", url: "https://claude.ai/*" },
+      foo: { name: "Foo", url: "https://foo.com/*" },
+    };
+    const ids = await getAllProviderIds();
+    for (const builtin of ALL_PROVIDER_IDS) expect(ids).toContain(builtin);
+    expect(ids).toContain("claude");
+    expect(ids).toContain("foo");
+    expect(ids).toHaveLength(ALL_PROVIDER_IDS.length + 2);
+  });
+
+  test("getActiveTrackedPlatformKeys includes a custom provider that is enabled by default", async () => {
+    syncStore["settings:providers"] = { openai: true, anthropic: false };
+    syncStore[STORAGE_KEYS.customProvidersAdded] = claudeAdded;
+    const keys = (await getActiveTrackedPlatformKeys()) as string[];
+    expect(keys).toContain("openai");
+    expect(keys).toContain("claude");
+    expect(keys).not.toContain("anthropic");
+  });
+
+  test("getActiveTrackedPlatformKeys excludes a custom provider turned off in settings", async () => {
+    syncStore["settings:providers"] = { claude: false };
+    syncStore[STORAGE_KEYS.customProvidersAdded] = claudeAdded;
+    const keys = (await getActiveTrackedPlatformKeys()) as string[];
+    expect(keys).not.toContain("claude");
+  });
+
+  test("getActiveTrackedPlatforms maps a custom provider id to its host", async () => {
+    syncStore[STORAGE_KEYS.customProvidersAdded] = claudeAdded;
+    const platforms = await getActiveTrackedPlatforms();
+    expect(platforms.claude).toEqual(["claude.ai"]);
+  });
+
+  test("sumForAllProviders includes custom provider usage", async () => {
+    syncStore[STORAGE_KEYS.customProvidersAdded] = claudeAdded;
+    syncStore["alltime:openai"] = 10;
+    syncStore["alltime:claude"] = 25;
+    expect(await sumForAllProviders("alltime")).toBe(35);
+  });
+
+  test("getActiveTrackedPlatformUsage surfaces custom provider usage", async () => {
+    const providers: Record<string, boolean> = {};
+    for (const id of Object.keys(TARGET_DOMAINS)) providers[id] = false;
+    syncStore["settings:providers"] = providers;
+    syncStore[STORAGE_KEYS.customProvidersAdded] = claudeAdded;
+    syncStore["alltime:claude"] = 42;
+    const usage = await getActiveTrackedPlatformUsage("alltime");
+    expect(usage).toHaveLength(1);
+    expect(usage[0]).toBe(42);
   });
 });
 

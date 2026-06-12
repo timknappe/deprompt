@@ -377,4 +377,14 @@ describe("resolveProvider", () => {
     expect(await resolveProvider("https://claude.ai/")).toBe("anthropic");
     expect(await resolveProvider("https://chatgpt.com/")).toBeNull();
   });
+
+  test("resolves a custom provider by its host", async () => {
+    // Custom providers arrive through getActiveTrackedPlatforms keyed by their slug id.
+    stubs.getActiveTrackedPlatforms = async () => ({
+      openai: ["chatgpt.com"],
+      "my-cool-ai": ["mycoolai.com"],
+    });
+    expect((await resolveProvider("https://app.mycoolai.com/chat")) as string).toBe("my-cool-ai");
+    expect(await resolveProvider("https://chatgpt.com/")).toBe("openai");
+  });
 });

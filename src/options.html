@@ -127,6 +127,22 @@
           <h3>Providers</h3>
           <p>Select which AI providers to track and control.</p>
           <div id="providerList"></div>
+
+          <h4 style="margin-top: 18px">Add a Custom Provider</h4>
+          <p>Track any other AI site. After adding, open it and allow tracking permission.</p>
+
+          <div id="customProviderPending"></div>
+
+          <div class="custom-provider-add">
+            <input type="text" id="customProviderName" placeholder="Name (e.g. Claude)" />
+            <input type="text" id="customProviderUrl" placeholder="URL (e.g. https://claude.ai/*)" />
+            <button id="addCustomProviderBtn" type="button" class="button primary">Add provider</button>
+          </div>
+
+          <div class="field-error" id="customProviderError"></div>
+          <div class="field-hint">
+            Adding a provider opens its site and asks you to grant tracking permission before it is tracked.
+          </div>
         </div>
 
         <!-- Data -->

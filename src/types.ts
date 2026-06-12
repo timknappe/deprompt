@@ -9,7 +9,9 @@ export type ProviderId =
   | "mistral"
   | "qwen"
   | "meta"
-  | "grok";
+  | "grok"
+  | "deepseek"
+  | "moonshot";
 
 type BrowserMessage = "CLOSE_TAB" | "TOGGLE_BLOCK" | "CLOSE_REMINDER";
 
@@ -22,6 +24,12 @@ export type Blockers = "FixedBlockTime" | "TimeLimit" | "ManualBlock";
 export type Reminder = "DailyUsageReminder" | "ContinuousUsageReminder" | "BlockedSoonReminder" | null;
 
 export type ProviderSelections = Record<string, boolean>;
+
+/** A user-added custom provider: its display name and host match pattern (e.g. "https://claude.ai/*"). */
+export type CustomProvider = { name: string; url: string };
+
+/** Map of custom provider id -> definition, stored under `providers:custom:added`. */
+export type CustomProvidersAdded = Record<string, CustomProvider>;
 
 export type StepRenderer = () => void;
 

@@ -40,9 +40,11 @@
 | `settings:notification:continuous` | `{ enabled: boolean; minutes: number }`                          | Continuous usage reminder configuration.             |
 | `settings:block:fixed`             | string[] entries `HH:MM;HH:MM`                                   | Fixed block windows.                                 |
 | `settings:block:manual`            | boolean                                                          | Manual block toggle state.                           |
-| `settings:providers`               | Record\<string, boolean>                                         | Provider tracking preferences by id.                 |
+| `settings:providers`               | Record\<string, boolean>                                         | Provider tracking preferences by id (built-in + custom). |
 | `settings:formatting:showSeconds`  | boolean                                                          | Whether to render time with seconds.                 |
 | `settings:toggle:togglesReminders` | boolean                                                          | Whether to toggle just for blocks or also reminders. |
+| `providers:custom:toAdd`           | `{ name: string; url: string }` or absent                        | A custom provider awaiting host-permission grant (shown as "Pending" in settings). |
+| `providers:custom:added`           | Record\<string, `{ name: string; url: string }`>                 | Custom providers added by the user, keyed by slug id (`url` is a host match pattern, e.g. `https://claude.ai/*`). |
 
 ## Local storage (browser.storage.local)
 
@@ -68,3 +70,5 @@
 - grok
 - qwen
 - meta
+- deepseek
+- moonshot

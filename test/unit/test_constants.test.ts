@@ -15,6 +15,10 @@ import {
   STORAGE_KEYS,
   TARGET_DOMAINS,
   VIEW_TYPES,
+  customProviderHost,
+  customProviderNavigableUrl,
+  normalizeCustomProviderPattern,
+  slugifyCustomProviderId,
 } from "../../src/constants.js";
 
 describe("provider tables stay aligned", () => {
@@ -114,12 +118,40 @@ describe("misc constants", () => {
     const values = Object.values(STORAGE_KEYS);
     expect(new Set(values).size).toBe(values.length);
     for (const v of values) {
-      expect(v.startsWith("settings:")).toBe(true);
+      expect(v.startsWith("settings:") || v.startsWith("providers:")).toBe(true);
     }
   });
 
   test("BLOCKER_CONTENT_SCRIPT and REMINDER_CONTENT_SCRIPT have distinct flags", () => {
     expect(BLOCKER_CONTENT_SCRIPT.js_flag).not.toBe(REMINDER_CONTENT_SCRIPT.js_flag);
     expect(BLOCKER_CONTENT_SCRIPT.css_flag).not.toBe(REMINDER_CONTENT_SCRIPT.css_flag);
+  });
+});
+
+describe("custom provider helpers", () => {
+  test("slugifyCustomProviderId produces stable kebab-case ids", () => {
+    expect(slugifyCustomProviderId("Claude")).toBe("claude");
+    expect(slugifyCustomProviderId("  My Cool AI!! ")).toBe("my-cool-ai");
+    expect(slugifyCustomProviderId("***")).toBe("");
+  });
+
+  test("normalizeCustomProviderPattern builds a host match pattern", () => {
+    expect(normalizeCustomProviderPattern("claude.ai")).toBe("https://claude.ai/*");
+    expect(normalizeCustomProviderPattern("https://claude.ai")).toBe("https://claude.ai/*");
+    expect(normalizeCustomProviderPattern("https://claude.ai/*")).toBe("https://claude.ai/*");
+    expect(normalizeCustomProviderPattern("http://example.com/chat")).toBe("http://example.com/*");
+  });
+
+  test("normalizeCustomProviderPattern rejects invalid input", () => {
+    expect(normalizeCustomProviderPattern("")).toBeNull();
+    expect(normalizeCustomProviderPattern("   ")).toBeNull();
+    expect(normalizeCustomProviderPattern("localhost")).toBeNull();
+    expect(normalizeCustomProviderPattern("not a url")).toBeNull();
+  });
+
+  test("customProviderHost and customProviderNavigableUrl round-trip a pattern", () => {
+    const pattern = "https://claude.ai/*";
+    expect(customProviderHost(pattern)).toBe("claude.ai");
+    expect(customProviderNavigableUrl(pattern)).toBe("https://claude.ai/");
   });
 });

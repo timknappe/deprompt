@@ -17,8 +17,11 @@
     "*://chat.mistral.ai/*",
     "*://*.grok.com/*",
     "*://chat.qwen.ai/*",
-    "*://*.meta.ai/*"
+    "*://*.meta.ai/*",
+    "*://chat.deepseek.com/*",
+    "*://*.kimi.com/*"
   ],
+  "optional_host_permissions": ["*://*/*"],
   "background": {
     "service_worker": "backgroundWorker.js",
     "scripts": ["backgroundWorker.js"],
@@ -62,7 +65,9 @@
         "*://chat.mistral.ai/*",
         "*://*.grok.com/*",
         "*://chat.qwen.ai/*",
-        "*://*.meta.ai/*"
+        "*://*.meta.ai/*",
+        "*://chat.deepseek.com/*",
+        "*://*.kimi.com/*"
       ]
     }
   ],

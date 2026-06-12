@@ -150,6 +150,26 @@ describe("renderProviderBreakdownChart", () => {
     // freshCanvas clears innerHTML before appending, so still 1 canvas
     expect(mount?.querySelectorAll("canvas")).toHaveLength(1);
   });
+
+  test("renders custom provider ids with a fallback color", async () => {
+    const prevProviders = stm.activeProviders;
+    const prevUsage = stm.activeUsage;
+    stm.activeProviders = ["openai", "my-cool-ai"];
+    stm.activeUsage = [10_000, 5_000];
+    try {
+      await renderProviderBreakdownChart("alltime");
+      const chart = chartInstances[0];
+      expect(chart.data.labels).toEqual(["openai", "my-cool-ai"]);
+      expect(chart.data.datasets[0].data).toEqual([10_000, 5_000]);
+      const colors = chart.data.datasets[0].backgroundColor as string[];
+      expect(colors).toHaveLength(2);
+      // A custom provider has no preset color, so it falls back to a defined value.
+      expect(colors[1]).toBe("#CCCCCC");
+    } finally {
+      stm.activeProviders = prevProviders;
+      stm.activeUsage = prevUsage;
+    }
+  });
 });
 
 describe("computeBlockControls across toggle/block/snooze combinations", () => {

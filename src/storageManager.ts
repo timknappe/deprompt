@@ -1,8 +1,15 @@
 import browser from "webextension-polyfill";
 import dayjs from "dayjs";
 import type { ConfigType } from "dayjs";
-import { ALL_PROVIDER_IDS, DEFAULT_SETTINGS, MAX_WEEKS_TO_KEEP, TARGET_DOMAINS } from "./constants.js";
-import type { IndexScope, ProviderId, ProviderSettings, Views } from "./types.js";
+import {
+  ALL_PROVIDER_IDS,
+  DEFAULT_SETTINGS,
+  MAX_WEEKS_TO_KEEP,
+  STORAGE_KEYS,
+  TARGET_DOMAINS,
+  customProviderHost,
+} from "./constants.js";
+import type { CustomProvider, IndexScope, ProviderId, ProviderSettings, Views } from "./types.js";
 
 const debugLog = (...args: unknown[]) => console.log("[Deprompt-debug]", ...args);
 
@@ -355,18 +362,80 @@ async function maintainMonthlyHistory(providerId: string, lastTs: number, nowTs:
 // #endregion
 
 // #region provider settings + usage queries
-export async function getActiveTrackedPlatformKeys(): Promise<ProviderId[]> {
-  const providers = await getProviderSettings();
-  return ALL_PROVIDER_IDS.filter((key) => providers[key]);
+/**
+ * Reads the user-added custom providers from sync storage.
+ * @returns {Promise<Record<string, CustomProvider>>} Map of custom provider id -> definition.
+ */
+export async function getCustomProvidersAdded(): Promise<Record<string, CustomProvider>> {
+  const result = await browser.storage.sync.get(STORAGE_KEYS.customProvidersAdded);
+  const raw = result[STORAGE_KEYS.customProvidersAdded];
+  if (!raw || typeof raw !== "object") return {};
+
+  const out: Record<string, CustomProvider> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (value && typeof value === "object") {
+      const name = (value as Record<string, unknown>).name;
+      const url = (value as Record<string, unknown>).url;
+      if (typeof name === "string" && typeof url === "string") {
+        out[id] = { name, url };
+      }
+    }
+  }
+  return out;
 }
 
-export async function getActiveTrackedPlatforms(): Promise<Partial<typeof TARGET_DOMAINS>> {
+/**
+ * Returns the custom providers that are currently enabled for tracking.
+ * Custom providers default to enabled unless explicitly turned off in settings:providers.
+ * @returns {Promise<Array<{ id: string; host: string }>>} Enabled custom providers with their host.
+ */
+async function getEnabledCustomProviders(): Promise<Array<{ id: string; host: string }>> {
+  const added = await getCustomProvidersAdded();
+  const ids = Object.keys(added);
+  if (ids.length === 0) return [];
+
+  const result = await browser.storage.sync.get(STORAGE_KEYS.providers);
+  const selectionsRaw = result[STORAGE_KEYS.providers];
+  const selections =
+    selectionsRaw && typeof selectionsRaw === "object" ? (selectionsRaw as Record<string, unknown>) : {};
+
+  return ids
+    .filter((id) => selections[id] !== false)
+    .map((id) => ({ id, host: customProviderHost(added[id]!.url) }));
+}
+
+/**
+ * Every provider id that may have stored usage data: the built-in providers plus
+ * any custom providers the user has added (regardless of whether they are currently
+ * enabled). Custom providers are runtime data, so this resolves asynchronously
+ * rather than being a static constant like {@link ALL_PROVIDER_IDS}.
+ * @returns {Promise<string[]>} Combined list of built-in and custom provider ids.
+ */
+export async function getAllProviderIds(): Promise<string[]> {
+  const custom = await getCustomProvidersAdded();
+  return [...ALL_PROVIDER_IDS, ...Object.keys(custom)];
+}
+
+export async function getActiveTrackedPlatformKeys(): Promise<ProviderId[]> {
   const providers = await getProviderSettings();
-  return Object.fromEntries(
+  const builtins = ALL_PROVIDER_IDS.filter((key) => providers[key]);
+  const custom = (await getEnabledCustomProviders()).map(({ id }) => id);
+  return [...builtins, ...custom] as ProviderId[];
+}
+
+export async function getActiveTrackedPlatforms(): Promise<Record<string, readonly string[]>> {
+  const providers = await getProviderSettings();
+  const active: Record<string, readonly string[]> = Object.fromEntries(
     (Object.entries(TARGET_DOMAINS) as [ProviderId, (typeof TARGET_DOMAINS)[ProviderId]][]).filter(
       ([provider]) => providers[provider],
     ),
   );
+
+  for (const { id, host } of await getEnabledCustomProviders()) {
+    if (host) active[id] = [host];
+  }
+
+  return active;
 }
 
 function resolveTimeFormat(viewType?: string): string {
@@ -426,7 +495,7 @@ export async function getWeeklyUsage(addActiveTime: boolean = false): Promise<nu
 export async function sumForAllProviders(timeFormat = "alltime"): Promise<number> {
   let totalTime = 0;
 
-  for (const providerId of ALL_PROVIDER_IDS) {
+  for (const providerId of await getAllProviderIds()) {
     const key = `${timeFormat}:${providerId}`;
     const result = await getSync(key);
     const providerTime = result[key];

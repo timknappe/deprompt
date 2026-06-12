@@ -1,6 +1,13 @@
 import browser from "webextension-polyfill";
-import { DEFAULT_SETTINGS, SETTINGS_PROVIDERS, STORAGE_KEYS } from "./constants.js";
-import type { ProviderSelections, ToggleableDurationSetting, SettingsState } from "./types.js";
+import {
+  DEFAULT_SETTINGS,
+  SETTINGS_PROVIDERS,
+  STORAGE_KEYS,
+  customProviderNavigableUrl,
+  normalizeCustomProviderPattern,
+  slugifyCustomProviderId,
+} from "./constants.js";
+import type { CustomProvider, ProviderSelections, ToggleableDurationSetting, SettingsState } from "./types.js";
 import { getFixedBlockDurations, initializeDefaults } from "./storageManager.js";
 import { destructFixedBlocker } from "./helpers.js";
 
@@ -311,29 +318,234 @@ const wireBlocking = (): void => {
   }
 };
 
-function buildProviderList(selectedProviders: ProviderSelections): void {
+// #region providers (built-in + custom)
+
+// Holds the current provider on/off selections; shared across re-renders so the
+// custom-provider add/delete flows stay in sync with the checkbox states.
+let providerSelections: ProviderSelections = {};
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+async function readCustomAdded(): Promise<Record<string, CustomProvider>> {
+  const result = await browser.storage.sync.get(STORAGE_KEYS.customProvidersAdded);
+  const raw = result[STORAGE_KEYS.customProvidersAdded];
+  if (!raw || typeof raw !== "object") return {};
+
+  const out: Record<string, CustomProvider> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (value && typeof value === "object") {
+      const name = (value as Record<string, unknown>).name;
+      const url = (value as Record<string, unknown>).url;
+      if (typeof name === "string" && typeof url === "string") out[id] = { name, url };
+    }
+  }
+  return out;
+}
+
+async function readCustomToAdd(): Promise<CustomProvider | null> {
+  const result = await browser.storage.sync.get(STORAGE_KEYS.customProvidersToAdd);
+  const raw = result[STORAGE_KEYS.customProvidersToAdd];
+  if (raw && typeof raw === "object") {
+    const name = (raw as Record<string, unknown>).name;
+    const url = (raw as Record<string, unknown>).url;
+    if (typeof name === "string" && typeof url === "string") return { name, url };
+  }
+  return null;
+}
+
+async function renderProviderList(): Promise<void> {
   const container = document.getElementById("providerList");
   if (!container) return;
+  const customAdded = await readCustomAdded();
   container.innerHTML = "";
+
   Object.entries(SETTINGS_PROVIDERS).forEach(([key, label]) => {
     const wrapper = document.createElement("label");
     wrapper.className = "inline-option";
     wrapper.innerHTML = `
-      <input type="checkbox" name="provider-${key}" data-provider="${key}" ${selectedProviders[key] ? "checked" : ""} />
+      <input type="checkbox" name="provider-${key}" data-provider="${key}" ${providerSelections[key] ? "checked" : ""} />
       ${label}
     `;
     container.appendChild(wrapper);
   });
+
+  Object.entries(customAdded).forEach(([id, provider]) => {
+    // Custom providers default to enabled unless explicitly turned off.
+    const checked = providerSelections[id] !== false;
+    const row = document.createElement("div");
+    row.className = "inline-option custom-provider-row";
+    row.innerHTML = `
+      <label class="custom-provider-label">
+        <input type="checkbox" data-provider="${id}" ${checked ? "checked" : ""} />
+        ${escapeHtml(provider.name)}
+      </label>
+      <button
+        type="button"
+        class="custom-provider-delete"
+        data-delete-provider="${id}"
+        title="Remove ${escapeHtml(provider.name)}"
+        aria-label="Remove ${escapeHtml(provider.name)}"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18" />
+          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+          <line x1="10" y1="11" x2="10" y2="17" />
+          <line x1="14" y1="11" x2="14" y2="17" />
+        </svg>
+      </button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+async function deleteCustomProvider(id: string): Promise<void> {
+  const added = await readCustomAdded();
+  const removed = added[id];
+  delete added[id];
+  await saveSetting(STORAGE_KEYS.customProvidersAdded, added);
+
+  if (id in providerSelections) {
+    delete providerSelections[id];
+    await saveSetting(STORAGE_KEYS.providers, providerSelections);
+  }
+
+  // Best-effort: drop the host permission we no longer need.
+  if (removed) {
+    try {
+      await browser.permissions.remove({ origins: [removed.url] });
+    } catch (err) {
+      console.warn("Failed to revoke custom provider permission", err);
+    }
+  }
+
+  await renderProviderList();
+}
+
+function wireProviderInteractions(): void {
+  const container = document.getElementById("providerList");
+  if (!container) return;
 
   container.addEventListener("change", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     const providerKey = target.getAttribute("data-provider");
     if (!providerKey) return;
-    selectedProviders[providerKey] = target.checked;
-    await saveSetting(STORAGE_KEYS.providers, selectedProviders);
+    providerSelections[providerKey] = target.checked;
+    await saveSetting(STORAGE_KEYS.providers, providerSelections);
+  });
+
+  container.addEventListener("click", async (event) => {
+    const origin = event.target;
+    if (!(origin instanceof Element)) return;
+    const button = origin.closest("[data-delete-provider]");
+    if (!button) return;
+    const id = button.getAttribute("data-delete-provider");
+    if (id) await deleteCustomProvider(id);
   });
 }
+
+async function activatePendingProvider(pending: CustomProvider): Promise<void> {
+  // Honour the user gesture: open the site and ask for the host permission in the
+  // same click handler so the browser shows its native allow/deny prompt.
+  void browser.tabs.create({ url: customProviderNavigableUrl(pending.url) });
+
+  let granted = false;
+  try {
+    granted = await browser.permissions.request({ origins: [pending.url] });
+  } catch (err) {
+    console.error("Custom provider permission request failed", err);
+  }
+  if (!granted) return;
+
+  const id = slugifyCustomProviderId(pending.name);
+  const added = await readCustomAdded();
+  added[id] = { name: pending.name, url: pending.url };
+  await saveSetting(STORAGE_KEYS.customProvidersAdded, added);
+
+  providerSelections[id] = true;
+  await saveSetting(STORAGE_KEYS.providers, providerSelections);
+
+  await browser.storage.sync.remove(STORAGE_KEYS.customProvidersToAdd);
+  await renderPendingProvider();
+  await renderProviderList();
+}
+
+async function renderPendingProvider(): Promise<void> {
+  const container = document.getElementById("customProviderPending");
+  if (!container) return;
+  const pending = await readCustomToAdd();
+  container.innerHTML = "";
+  if (!pending) return;
+
+  const row = document.createElement("div");
+  row.className = "custom-provider-pending";
+  row.innerHTML = `
+    <div class="pending-info">
+      <span class="pending-badge">Pending</span>
+      <span class="pending-name">${escapeHtml(pending.name)}</span>
+      <span class="pending-url">${escapeHtml(pending.url)}</span>
+    </div>
+    <div class="pending-actions">
+      <button type="button" class="button primary small" id="openPendingBtn">Open &amp; allow</button>
+      <button type="button" class="button danger small" id="cancelPendingBtn">Cancel</button>
+    </div>
+  `;
+  container.appendChild(row);
+
+  document.getElementById("openPendingBtn")?.addEventListener("click", () => {
+    void activatePendingProvider(pending);
+  });
+  document.getElementById("cancelPendingBtn")?.addEventListener("click", async () => {
+    await browser.storage.sync.remove(STORAGE_KEYS.customProvidersToAdd);
+    await renderPendingProvider();
+  });
+}
+
+function wireAddCustomProvider(): void {
+  const nameInput = document.getElementById("customProviderName");
+  const urlInput = document.getElementById("customProviderUrl");
+  const addBtn = document.getElementById("addCustomProviderBtn");
+  const errorEl = document.getElementById("customProviderError");
+  if (
+    !(nameInput instanceof HTMLInputElement) ||
+    !(urlInput instanceof HTMLInputElement) ||
+    !(addBtn instanceof HTMLButtonElement)
+  ) {
+    return;
+  }
+
+  const showError = (message: string) => {
+    if (errorEl) errorEl.textContent = message;
+  };
+
+  addBtn.addEventListener("click", async () => {
+    showError("");
+    const name = nameInput.value.trim();
+    const pattern = normalizeCustomProviderPattern(urlInput.value);
+
+    if (!name) return showError("Enter a name for the provider.");
+    if (!pattern) return showError("Enter a valid URL, e.g. https://claude.ai/*");
+
+    const id = slugifyCustomProviderId(name);
+    if (!id) return showError("Name must contain letters or numbers.");
+    if (id in SETTINGS_PROVIDERS) return showError("That name matches a built-in provider.");
+
+    const added = await readCustomAdded();
+    if (id in added) return showError("A custom provider with that name already exists.");
+
+    await saveSetting(STORAGE_KEYS.customProvidersToAdd, { name, url: pattern });
+    nameInput.value = "";
+    urlInput.value = "";
+    await renderPendingProvider();
+  });
+}
+// #endregion
 
 const wireFormatting = (showSeconds: boolean, countUnfocusedTime: boolean): void => {
   const showSecondsToggle = document.getElementById("showSecondsToggle");
@@ -381,7 +593,11 @@ async function init() {
   updateHowOftenSectionState();
   renderBlockRanges(currentBlockRanges);
 
-  buildProviderList(settings.providers);
+  providerSelections = settings.providers;
+  await renderProviderList();
+  wireProviderInteractions();
+  await renderPendingProvider();
+  wireAddCustomProvider();
   wireFormatting(settings.formatting.showSeconds, settings.tracking.countUnfocusedTime);
 
   wireTimeLimit();
