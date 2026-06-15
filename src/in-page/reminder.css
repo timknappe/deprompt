@@ -24,11 +24,6 @@
   font-family: "Inter", sans-serif;
 }
 
-#deprompt-reminder-unique-flag ::selection {
-  background: #7c4dff;
-  color: #ffffff;
-}
-
 #deprompt-reminder-unique-flag {
   position: fixed;
   top: 60px;

@@ -8,25 +8,28 @@
     <link rel="icon" href="../assets/icon48.png" />
   </head>
   <body>
-    <div style="display: flex">
-      <a class="dashboardLink" style="" href="dashboard.html">
+    <header id="header" class="card">
+      <div id="header-left">
+        <a href="dashboard.html"><img src="../assets/icon128.png" class="logo-img" alt="deprompt" /></a>
+      </div>
+
+      <nav id="settings-nav">
+        <a class="nav-link sideBarLink" href="#timeLimitOptions">Time Limits</a>
+        <a class="nav-link sideBarLink" href="#notificationOptions">Notifications</a>
+        <a class="nav-link sideBarLink" href="#formattingOptions">Formatting</a>
+        <a class="nav-link sideBarLink" href="#providerOptions">Providers</a>
+        <a class="nav-link sideBarLink" href="#dataSection">Data</a>
+      </nav>
+
+      <a href="dashboard.html" class="settingsField">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
-        Back to Dashboard
+        <span class="settingsText">Dashboard</span>
       </a>
-      <h1 style="margin-left: 20%; width: 80%">Deprompt Settings</h1>
-    </div>
-    <div style="display: flex">
-      <div class="sideBarLinkContainer">
-        <a class="sideBarLink" href="#timeLimitOptions">Time Limits & Blocks</a>
-        <a class="sideBarLink" href="#notificationOptions">Notifications</a>
-        <a class="sideBarLink" href="#formattingOptions">Formatting</a>
-        <a class="sideBarLink" href="#providerOptions">Providers</a>
-        <a class="sideBarLink" href="#dataSection">Data Management</a>
-      </div>
+    </header>
 
-      <div style="margin-left: 20%; width: 80%">
+    <main>
         <!-- Time Limits -->
         <div class="section card" id="timeLimitOptions">
           <h3>Time Limits & Blocks</h3>
@@ -175,7 +178,6 @@
         </div>
 
         <script type="module" src="settingsHandler.js"></script>
-      </div>
-    </div>
+    </main>
   </body>
 </html>

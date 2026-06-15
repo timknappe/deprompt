@@ -178,10 +178,10 @@ const PERIOD_LABELS: Record<string, string> = {
 };
 
 const TOP_AI_PERIOD_LABELS: Record<string, string> = {
-  weekly: "Top AI This Week",
-  monthly: "Top AI This Month",
-  yearly: "Top AI This Year",
-  alltime: "Top AI All Time",
+  weekly: "Most used AI This Week",
+  monthly: "Most used AI This Month",
+  yearly: "Most used AI This Year",
+  alltime: "Most used AI All Time",
 };
 
 async function getPeriodTotal(viewType: Views): Promise<number> {
@@ -485,7 +485,7 @@ async function updateViewDependentStats(viewType: Views): Promise<void> {
   if (periodLabelElem) periodLabelElem.textContent = PERIOD_LABELS[viewType] ?? "This Week";
 
   const topAiLabelElem = document.getElementById("top-ai-label");
-  if (topAiLabelElem) topAiLabelElem.textContent = TOP_AI_PERIOD_LABELS[viewType] ?? "Top AI This Week";
+  if (topAiLabelElem) topAiLabelElem.textContent = TOP_AI_PERIOD_LABELS[viewType] ?? "Most used AI This Week";
 
   const periodTotal = await getPeriodTotal(viewType);
   const periodUsageElem = document.getElementById("period-usage");

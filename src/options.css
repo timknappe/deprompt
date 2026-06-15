@@ -6,33 +6,125 @@
   font-display: swap;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 ::selection {
   background: #7c4dff;
   color: #ffffff;
 }
 
 body {
-  background-color: #1e1e1e;
+  background-color: #161618;
   color: #ddd;
   font-family: "Inter", sans-serif;
   margin: 0;
-  padding: 40px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
-h1 {
-  color: #b3aaff;
-  text-align: center;
-  font-weight: 500;
-  margin-bottom: 32px;
-}
+/* ── Cards ── */
 
 .card {
-  background: rgba(40, 40, 40, 0.85);
-  border: 1px solid rgba(80, 80, 80, 0.6);
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  background: #1f1f22;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+/* ── Header ── */
+
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 20px;
+  z-index: 10;
+}
+
+#header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.logo-img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+/* ── Settings nav (header pill bar) ── */
+
+#settings-nav {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+  user-select: none;
+}
+
+.nav-link {
+  display: block;
+  padding: 5px 14px;
+  border-radius: 6px;
+  color: #888;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-link:hover {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.focused {
+  background: #7c4dff;
+  color: #fff;
+  box-shadow: 0 1px 6px rgba(124, 77, 255, 0.4);
+}
+
+/* ── Back to dashboard link ── */
+
+.settingsField {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #888;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.settingsField:hover {
+  color: #ccc;
+}
+
+.settingsText {
+  color: inherit;
+}
+
+/* ── Main content ── */
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 h3,
@@ -79,7 +171,7 @@ input[type="number"],
 input[type="time"] {
   background: #2c2c2c;
   color: #ddd;
-  border: 1px solid #555;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   padding: 6px 10px;
   font-family: "Inter", sans-serif;
@@ -108,23 +200,37 @@ input:focus {
   box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.15);
 }
 
+/* ── Buttons ── */
+
 .button {
   border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 14px;
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: filter 0.15s, opacity 0.15s;
+  font-family: inherit;
 }
 
 .button.primary {
-  background-color: #7c4dff;
-  color: white;
+  background: #7c4dff;
+  color: #fff;
 }
 
-.button.primary:hover {
-  background-color: #906bff;
+.button.danger {
+  background: #c0392b;
+  color: #fff;
+}
+
+.button:hover {
+  filter: brightness(1.15);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: none;
 }
 
 .remove-btn {
@@ -141,20 +247,24 @@ input:focus {
   color: #fff;
 }
 
+/* ── Field hints and errors ── */
+
 .field-error {
   color: #d64545;
   font-size: 0.9rem;
 }
 
 .field-hint {
-  color: #888;
+  color: #555;
   padding-top: 8px;
   font-size: 0.9rem;
 }
 
+/* ── Block time entries ── */
+
 .block-time-entry {
-  background: rgba(50, 50, 50, 0.6);
-  border: 1px solid rgba(100, 100, 100, 0.4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   padding: 9px 12px;
   border-radius: 8px;
   margin-top: 8px;
@@ -186,7 +296,7 @@ input:focus {
 }
 
 .time-arrow {
-  color: #666;
+  color: #555;
   font-size: 13px;
 }
 
@@ -199,27 +309,13 @@ input:focus {
 }
 
 .time-add .time-sep {
-  color: #888;
+  color: #555;
   font-size: 13px;
   font-weight: 500;
 }
 
-.button.small {
-  padding: 4px 10px;
-  font-size: 12px;
-  border-radius: 5px;
-}
+/* ── Custom providers ── */
 
-.button.danger {
-  background-color: #d64545 !important;
-  color: white;
-}
-
-.button.danger:hover {
-  background-color: #e05a5a !important;
-}
-
-/* Custom providers */
 .custom-provider-row {
   display: flex;
   align-items: center;
@@ -243,14 +339,12 @@ input:focus {
   justify-content: center;
   background: transparent;
   border: none;
-  color: #888;
+  color: #555;
   cursor: pointer;
   line-height: 0;
   padding: 2px 6px;
   opacity: 0;
-  transition:
-    opacity 0.15s,
-    color 0.15s;
+  transition: opacity 0.15s, color 0.15s;
 }
 
 .custom-provider-row:hover .custom-provider-delete,
@@ -273,7 +367,7 @@ input:focus {
 .custom-provider-add input[type="text"] {
   background: #2c2c2c;
   color: #ddd;
-  border: 1px solid #555;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   padding: 6px 10px;
   font-family: "Inter", sans-serif;
@@ -282,7 +376,7 @@ input:focus {
 
 .custom-provider-pending {
   background: rgba(124, 77, 255, 0.08);
-  border: 1px solid rgba(124, 77, 255, 0.35);
+  border: 1px solid rgba(124, 77, 255, 0.25);
   border-radius: 8px;
   padding: 9px 12px;
   margin-top: 10px;
@@ -315,7 +409,7 @@ input:focus {
 }
 
 .pending-url {
-  color: #888;
+  color: #555;
   font-size: 13px;
 }
 
@@ -324,48 +418,7 @@ input:focus {
   gap: 8px;
 }
 
-.sideBarLinkContainer {
-  display: flex;
-  flex-direction: column;
-  width: 15%;
-  position: fixed;
-  padding: 0.5em;
-}
-
-.dashboardLink {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-  width: 15%;
-  position: fixed;
-  padding: 0.5em;
-  color: white;
-  text-decoration: none;
-  font-size: 1em;
-  margin-bottom: 0.7em;
-}
-
-.dashboardLink:hover {
-  text-decoration: underline;
-}
-
-.sideBarLink {
-  color: white;
-  text-decoration: none;
-  font-size: 1em;
-  margin-bottom: 0.7em;
-}
-
-.focused {
-  border-left: 3px solid #7c4dff !important;
-  padding-left: 3px !important;
-}
-
-.confirmDialog {
-  display: flex;
-  position: fixed;
-  z-index: 100;
-}
+/* ── Section layout ── */
 
 #fixedTimeSection {
   width: 50%;
@@ -377,4 +430,33 @@ input:focus {
 
 #timeLimitSubOptions {
   display: flex;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 800px) {
+  #settings-nav {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    padding: 12px 14px;
+  }
+
+  #header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  #timeLimitSubOptions {
+    flex-direction: column;
+  }
+
+  #fixedTimeSection,
+  #timeLimitSection {
+    width: 100%;
+  }
 }
