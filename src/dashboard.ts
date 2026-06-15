@@ -26,6 +26,7 @@ import {
   unsetBlockToggle,
 } from "./storageManager.js";
 import dayjs from "dayjs";
+import { loadAndApplyWeekStart, weekdayLabels } from "./weekStart.js";
 import type { Views } from "./types.js";
 import browser from "webextension-polyfill";
 ChartJS.register(BarController, BarElement, CategoryScale, LinearScale, PieController, ArcElement, Tooltip, Legend);
@@ -334,7 +335,7 @@ export async function renderProviderBreakdownChart(viewType: Views = "alltime"):
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: false,
+      animation: true,
       plugins: {
         legend: {
           position: "left",
@@ -366,9 +367,34 @@ export async function renderProviderBreakdownChart(viewType: Views = "alltime"):
 
 let currentViewType: Views = "weekly";
 let barChart: ChartJS<"bar", number[], string> | null = null;
+// Mirrors the stored week-start preference; refreshed from storage on every
+// refreshAll so the weekly axis re-orders when the user flips the toggle.
+let weekStartsOnSunday = false;
 
 function isViewType(value: string): value is Views {
   return VIEW_TYPES.includes(value.toLowerCase() as Views);
+}
+
+/**
+ * Chart x-axis labels for a view. Weekly and monthly are derived at render time so
+ * they track the user's week-start preference; other views use the static labels.
+ */
+function getChartLabels(viewType: Views): string[] {
+  switch (viewType) {
+    case "weekly":
+      return weekdayLabels(weekStartsOnSunday);
+    case "monthly": {
+      const startWeek = dayjs()
+        .startOf("week")
+        .subtract(MAX_WEEKS_TO_KEEP - 1, "week");
+      return Array.from({ length: MAX_WEEKS_TO_KEEP }, (_, i) => {
+        const start = startWeek.add(i, "week");
+        return `${start.format("DD.MM")} - ${start.add(6, "day").format("DD.MM")}`;
+      });
+    }
+    default:
+      return LABELS_BY_VIEW[viewType] ?? [];
+  }
 }
 
 async function getChartDataByViewType(viewType: Views): Promise<number[]> {
@@ -410,7 +436,7 @@ async function getChartDataByViewType(viewType: Views): Promise<number[]> {
 }
 
 async function renderUsageChart(viewType: Views): Promise<void> {
-  const labels = LABELS_BY_VIEW[viewType] ?? [];
+  const labels = getChartLabels(viewType);
   const data: ChartData<"bar", number[], string> = {
     labels,
     datasets: [
@@ -436,7 +462,7 @@ async function renderUsageChart(viewType: Views): Promise<void> {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: false,
+      animation: true,
       plugins: {
         legend: { display: false },
         title: { display: false },
@@ -515,6 +541,9 @@ function handleViewChange(event: Event): void {
  * off using an AI in another tab).
  */
 async function refreshAll(): Promise<void> {
+  // Pick up (and apply to Day.js) the latest week-start preference first so every
+  // widget below buckets and labels weeks using the user's chosen first day.
+  weekStartsOnSunday = await loadAndApplyWeekStart();
   await Promise.all([
     setStandardUsage(),
     updateViewDependentStats(currentViewType),

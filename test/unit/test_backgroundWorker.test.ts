@@ -13,6 +13,7 @@ const listeners: Record<string, AnyFn[]> = {
   "windows.onFocusChanged": [],
   "runtime.onInstalled": [],
   "runtime.onMessage": [],
+  "storage.sync.onChanged": [],
 };
 
 const stubCalls = {
@@ -54,7 +55,12 @@ const fakeBrowser = {
     getURL: (p: string) => `chrome-extension://fake/${p}`,
   },
   storage: {
-    sync: { get: async () => ({}), set: async () => undefined, remove: async () => undefined },
+    sync: {
+      get: async () => ({}),
+      set: async () => undefined,
+      remove: async () => undefined,
+      onChanged: { addListener: (cb: AnyFn) => listeners["storage.sync.onChanged"]!.push(cb) },
+    },
     local: { get: async () => ({}), set: async () => undefined, remove: async () => undefined },
   },
 };

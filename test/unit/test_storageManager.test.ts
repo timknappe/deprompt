@@ -94,12 +94,16 @@ const {
   unsetBlockToggle,
 } = await import("../../src/storageManager.js");
 
+const { applyWeekStart } = await import("../../src/weekStart.js");
+
 beforeEach(() => {
   for (const k of Object.keys(syncStore)) delete syncStore[k];
   for (const k of Object.keys(localStore)) delete localStore[k];
   alarmCalls.length = 0;
   alarmClearCalls.length = 0;
   activeAlarms.clear();
+  // Reset Day.js to the Monday default so week bucketing is deterministic per test.
+  applyWeekStart(false);
 });
 
 describe("normalizeDateKey", () => {
@@ -429,6 +433,52 @@ describe("flushPendingToSync", () => {
     expect(syncStore["alltime:openai"]).toBe(5_000);
     // Indices should not duplicate
     expect((syncStore["index:daily:openai"] as string[]).filter((d) => d === "2026-04-15")).toHaveLength(1);
+  });
+
+  describe("week bucketing respects the week-start preference", () => {
+    // 2026-04-15 is a Wednesday: Monday-week starts 04-13, Sunday-week starts 04-12.
+    const ts = dayjs("2026-04-15 10:00:00").valueOf();
+
+    test("default (Monday) keys the week bucket to the preceding Monday", async () => {
+      applyWeekStart(false);
+      await flushPendingToSync("openai", 5_000, ts);
+      expect(syncStore["week:2026-04-13:openai"]).toBe(5_000);
+      expect(syncStore["index:weekly:openai"]).toContain("2026-04-13");
+    });
+
+    test("Sunday preference keys the week bucket to the preceding Sunday", async () => {
+      applyWeekStart(true);
+      await flushPendingToSync("openai", 5_000, ts);
+      expect(syncStore["week:2026-04-12:openai"]).toBe(5_000);
+      expect(syncStore["index:weekly:openai"]).toContain("2026-04-12");
+    });
+
+    test("the Sunday before Wednesday lands in different weeks under each preference", async () => {
+      const sundayTs = dayjs("2026-04-12 10:00:00").valueOf();
+
+      applyWeekStart(false);
+      await flushPendingToSync("openai", 1_000, sundayTs);
+      // Under Monday weeks, Sunday 04-12 belongs to the week starting Monday 04-06.
+      expect(syncStore["week:2026-04-06:openai"]).toBe(1_000);
+
+      applyWeekStart(true);
+      await flushPendingToSync("openai", 1_000, sundayTs);
+      // Under Sunday weeks, Sunday 04-12 starts its own week.
+      expect(syncStore["week:2026-04-12:openai"]).toBe(1_000);
+    });
+  });
+});
+
+describe("initializeDefaults seeds the week-start preference", () => {
+  test("writes the Monday default when unset", async () => {
+    await initializeDefaults();
+    expect(syncStore["settings:formatting:weekStartsOnSunday"]).toBe(false);
+  });
+
+  test("leaves an existing preference untouched", async () => {
+    syncStore["settings:formatting:weekStartsOnSunday"] = true;
+    await initializeDefaults();
+    expect(syncStore["settings:formatting:weekStartsOnSunday"]).toBe(true);
   });
 });
 

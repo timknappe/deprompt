@@ -11,6 +11,7 @@ import {
   getCountUnfocusedTime,
 } from "./storageManager.js";
 import { isBlocked, resolveProvider, scheduleWindowUI } from "./helpers.js";
+import { WEEK_START_SUNDAY_KEY, loadAndApplyWeekStart } from "./weekStart.js";
 import type { ProviderId } from "./types.js";
 import {
   ejectBlockPopup,
@@ -238,6 +239,9 @@ browser.tabs.onRemoved.addListener((tabId) => {
 initPromise = (async () => {
   const now = Date.now();
   await initializeDefaults();
+  // Apply the stored week-start preference before any rollover so week buckets
+  // are keyed to the user's chosen first day of the week.
+  await loadAndApplyWeekStart();
   await rollover(now);
 
   const [activeTab] = await browser.tabs.query({
@@ -262,6 +266,14 @@ initPromise = (async () => {
     activeProviderId: lastActiveProviderId,
   });
 })();
+
+// Keep the running worker's Day.js locale in sync when the user flips the
+// week-start toggle from the options page, so new buckets land in the right week.
+browser.storage.sync.onChanged.addListener((changes) => {
+  if (WEEK_START_SUNDAY_KEY in changes) {
+    void loadAndApplyWeekStart();
+  }
+});
 
 browser.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "install") {

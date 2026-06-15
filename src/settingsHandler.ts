@@ -10,6 +10,7 @@ import {
 import type { CustomProvider, ProviderSelections, ToggleableDurationSetting, SettingsState } from "./types.js";
 import { getFixedBlockDurations, initializeDefaults } from "./storageManager.js";
 import { destructFixedBlocker } from "./helpers.js";
+import { setWeekStartsOnSunday } from "./weekStart.js";
 
 let currentBlockRanges: string[] = [];
 
@@ -57,6 +58,10 @@ async function loadSettings(): Promise<SettingsState> {
   const providersRaw = result[STORAGE_KEYS.providers];
   const providers = typeof providersRaw === "object" && providersRaw ? (providersRaw as ProviderSelections) : {};
   const showSeconds = Boolean(result[STORAGE_KEYS.formattingShowSeconds] ?? DEFAULT_SETTINGS.formatting.showSeconds);
+  const weekStartsOnSunday =
+    result[STORAGE_KEYS.formattingWeekStartSunday] === undefined
+      ? DEFAULT_SETTINGS.formatting.weekStartsOnSunday
+      : Boolean(result[STORAGE_KEYS.formattingWeekStartSunday]);
   const countUnfocusedTime = result[STORAGE_KEYS.trackingCountUnfocused] === undefined
     ? DEFAULT_SETTINGS.tracking.countUnfocusedTime
     : Boolean(result[STORAGE_KEYS.trackingCountUnfocused]);
@@ -87,6 +92,7 @@ async function loadSettings(): Promise<SettingsState> {
     },
     formatting: {
       showSeconds,
+      weekStartsOnSunday,
     },
     tracking: {
       countUnfocusedTime,
@@ -547,7 +553,11 @@ function wireAddCustomProvider(): void {
 }
 // #endregion
 
-const wireFormatting = (showSeconds: boolean, countUnfocusedTime: boolean): void => {
+const wireFormatting = (
+  showSeconds: boolean,
+  countUnfocusedTime: boolean,
+  weekStartsOnSunday: boolean,
+): void => {
   const showSecondsToggle = document.getElementById("showSecondsToggle");
   if (showSecondsToggle instanceof HTMLInputElement) {
     showSecondsToggle.checked = showSeconds;
@@ -555,6 +565,17 @@ const wireFormatting = (showSeconds: boolean, countUnfocusedTime: boolean): void
       const target = event.target;
       if (!(target instanceof HTMLInputElement)) return;
       await saveSetting(STORAGE_KEYS.formattingShowSeconds, target.checked);
+    });
+  }
+
+  // The checkbox reads "start week on Sunday"; unchecked means Monday (the default).
+  const weekStartToggle = document.getElementById("weekStartSundayToggle");
+  if (weekStartToggle instanceof HTMLInputElement) {
+    weekStartToggle.checked = weekStartsOnSunday;
+    weekStartToggle.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      await setWeekStartsOnSunday(target.checked);
     });
   }
 
@@ -598,7 +619,11 @@ async function init() {
   wireProviderInteractions();
   await renderPendingProvider();
   wireAddCustomProvider();
-  wireFormatting(settings.formatting.showSeconds, settings.tracking.countUnfocusedTime);
+  wireFormatting(
+    settings.formatting.showSeconds,
+    settings.tracking.countUnfocusedTime,
+    settings.formatting.weekStartsOnSunday,
+  );
 
   wireTimeLimit();
   wireNotifications();
@@ -616,6 +641,7 @@ const sections = [...document.querySelectorAll<HTMLElement>(".section")];
 let active: HTMLElement | null = null;
 
 let ignoreStamp: number | null = null;
+let rafPending = false;
 
 const sideBarLinks = document.querySelectorAll(".sideBarLink");
 
@@ -623,30 +649,35 @@ addEventListener(
   "scroll",
   () => {
     if (ignoreStamp !== null && ignoreStamp >= Date.now()) return;
-    ignoreStamp = Date.now() + 100;
-    const center = innerHeight / 2;
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => {
+      rafPending = false;
+      if (ignoreStamp !== null && ignoreStamp >= Date.now()) return;
+      const center = innerHeight / 2;
 
-    let best: HTMLElement | null = null;
-    let bestDist = Infinity;
+      let best: HTMLElement | null = null;
+      let bestDist = Infinity;
 
-    for (const s of sections) {
-      const r = s.getBoundingClientRect();
-      const d = Math.abs(r.top + r.height / 2 - center);
-      if (d < bestDist) {
-        bestDist = d;
-        best = s;
+      for (const s of sections) {
+        const r = s.getBoundingClientRect();
+        const d = Math.abs(r.top + r.height / 2 - center);
+        if (d < bestDist) {
+          bestDist = d;
+          best = s;
+        }
       }
-    }
 
-    if (best && best !== active) {
-      sideBarLinks?.forEach((element) => element.classList.remove("focused"));
+      if (best && best !== active) {
+        sideBarLinks?.forEach((element) => element.classList.remove("focused"));
 
-      const bestId = best.getAttribute("id");
-      if (bestId) {
-        document.querySelector(`a[href="#${bestId}"]`)?.classList.add("focused");
+        const bestId = best.getAttribute("id");
+        if (bestId) {
+          document.querySelector(`a[href="#${bestId}"]`)?.classList.add("focused");
+        }
+        active = best;
       }
-      active = best;
-    }
+    });
   },
   { passive: true }
 );

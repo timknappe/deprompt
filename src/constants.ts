@@ -1,4 +1,7 @@
 import dayjs from "dayjs";
+// Importing this applies the default (Monday) week start to Day.js before the
+// week-based LABELS_BY_VIEW entries below are computed at module load.
+import { WEEK_START_SUNDAY_KEY } from "./weekStart.js";
 import type { ToggleableDurationSetting, ProviderId, ProviderSelections, SettingsState, Views } from "./types.js";
 
 export const PROVIDER_COLORS: Record<string, string> = {
@@ -34,7 +37,7 @@ export const DEFAULT_PROVIDER_HOVER_COLOR = "#8e63ff";
 export const VIEW_TYPES: Views[] = ["weekly", "monthly", "yearly", "alltime"];
 
 export const LABELS_BY_VIEW: Record<Views, string[]> = {
-  weekly: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  weekly: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
   monthly: Array.from(
     { length: 4 },
     (_, i) =>
@@ -62,6 +65,7 @@ export const STORAGE_KEYS = {
   blockFixedTime: "settings:block:fixed",
   providers: "settings:providers",
   formattingShowSeconds: "settings:formatting:showSeconds",
+  formattingWeekStartSunday: WEEK_START_SUNDAY_KEY,
   trackingCountUnfocused: "settings:tracking:countUnfocused",
   customProvidersToAdd: "providers:custom:toAdd",
   customProvidersAdded: "providers:custom:added",
@@ -95,6 +99,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
   }, {}),
   formatting: {
     showSeconds: true,
+    weekStartsOnSunday: false,
   },
   tracking: {
     countUnfocusedTime: true,

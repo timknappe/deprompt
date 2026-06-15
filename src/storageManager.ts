@@ -10,6 +10,9 @@ import {
   customProviderHost,
 } from "./constants.js";
 import type { CustomProvider, IndexScope, ProviderId, ProviderSettings, Views } from "./types.js";
+// Importing applies the default (Monday) week start to Day.js so weekStartKey
+// buckets weeks consistently even before the stored preference is loaded.
+import { DEFAULT_WEEK_STARTS_ON_SUNDAY, WEEK_START_SUNDAY_KEY } from "./weekStart.js";
 
 const debugLog = (...args: unknown[]) => console.log("[Deprompt-debug]", ...args);
 
@@ -793,6 +796,7 @@ export async function getCountUnfocusedTime(): Promise<boolean> {
 export async function initializeDefaults() {
   const existing = await browser.storage.sync.get([
     "settings:formatting:showSeconds",
+    WEEK_START_SUNDAY_KEY,
     "settings:timeLimit",
     "settings:notification:daily",
     "settings:notification:continuous",
@@ -805,6 +809,10 @@ export async function initializeDefaults() {
 
   if (existing["settings:formatting:showSeconds"] === undefined) {
     updates["settings:formatting:showSeconds"] = DEFAULT_SETTINGS.formatting.showSeconds;
+  }
+
+  if (existing[WEEK_START_SUNDAY_KEY] === undefined) {
+    updates[WEEK_START_SUNDAY_KEY] = DEFAULT_WEEK_STARTS_ON_SUNDAY;
   }
 
   const timeLimit = existing["settings:timeLimit"];

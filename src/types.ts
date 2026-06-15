@@ -50,6 +50,7 @@ export type SettingsState = {
   providers: ProviderSelections;
   formatting: {
     showSeconds: boolean;
+    weekStartsOnSunday: boolean;
   };
   tracking: {
     countUnfocusedTime: boolean;
