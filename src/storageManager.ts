@@ -41,6 +41,18 @@ function nowRoundedToSecond(): number {
   return now - (now % 1000);
 }
 
+/**
+ * Creates the heartbeat alarm only when it doesn't already exist. Recreating an
+ * alarm resets its clock, and the MV3 service worker re-runs init on every cold
+ * start, so an unconditional create can starve the heartbeat indefinitely.
+ */
+async function ensureSyncTimerAlarm(): Promise<void> {
+  const existing = await browser.alarms.get("syncTimer");
+  if (!existing) {
+    browser.alarms.create("syncTimer", { periodInMinutes: 1 });
+  }
+}
+
 async function getRuntimeSessionState(): Promise<RuntimeSessionState | null> {
   const local = await browser.storage.local.get(RUNTIME_LOCAL_KEYS);
 
@@ -580,7 +592,7 @@ export async function startTimerForProvider(providerId: string): Promise<void> {
     start: now,
     iso: new Date(now).toISOString(),
   });
-  browser.alarms.create("syncTimer", { periodInMinutes: 1 });
+  await ensureSyncTimerAlarm();
 }
 
 /**
@@ -625,7 +637,7 @@ export async function finalizeSession(reason: string, expectedProviderId?: strin
   }
 
   if (!flushSucceeded) {
-    browser.alarms.create("syncTimer", { periodInMinutes: 1 });
+    await ensureSyncTimerAlarm();
     return;
   }
 
@@ -676,7 +688,7 @@ export async function reconcileActiveSessionOnInit(activeProviderId: ProviderId 
 
   const now = nowRoundedToSecond();
   await accumulateRuntimeDelta(now);
-  browser.alarms.create("syncTimer", { periodInMinutes: 1 });
+  await ensureSyncTimerAlarm();
   debugLog("reconcileActiveSessionOnInit: resumed active session", {
     providerId: runtime.provider,
     activeProviderId,

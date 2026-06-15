@@ -62,8 +62,8 @@ function timeToMinutes(value: string): number {
 // ---- STEP 1 ----
 function renderNotifications(): void {
   wizard.innerHTML = `
-    <h2>Step 1 - Notifications</h2>
-    <p class="description">Set reminders for your sessions.</p>
+    <h2>Step 1 - Notifications <span class="optional-badge">Optional</span></h2>
+    <p class="description">Tracking is always on — these reminders are extras. Skip if you just want to track your usage.</p>
 
       <label class="radio-option">
         <input type="checkbox" id="notifyDailyToggle">
@@ -88,14 +88,14 @@ function renderNotifications(): void {
     </div>
 
     <div class="button-row">
-      <button id="back">< Back</button>
+      <button id="back" class="btn-secondary">Skip</button>
       <button id="next">Next ></button>
     </div>
   `;
 
   const back = document.getElementById("back");
   if (back instanceof HTMLButtonElement) {
-    back.onclick = prevStep;
+    back.onclick = nextStep;
   }
 
   const next = document.getElementById("next");
@@ -209,25 +209,25 @@ function renderNotifications(): void {
 // ---- STEP 2 ----
 function renderBlocks(): void {
   wizard.innerHTML = `
-    <h2>Step 2 - Blocks</h2>
-    <p class="description">Set time limits or and blockers for your sessions.</p>
+    <h2>Step 2 - Blocks <span class="optional-badge">Optional</span></h2>
+    <p class="description">Add limits if you want to curb usage — entirely optional. Your usage is tracked either way.</p>
 
       <label class="radio-option">
         <input type="checkbox" id="blockToggle">
-        <span>Daily time limit (minutes) - restrict AI access after a time limit (we will remind you 5 minutes prior)</span>
+        <span>Daily time limit - restrict AI access after a set amount of usage (reminder 5 min before)</span>
       </label>
       <div class="sub-option">
-        <span>Block after (minutes)</span>
+        <span>Block after</span>
         <input type="number" id="timeLimit" min="5" max="600" value="60" />
+        <span>minutes</span>
       </div>
       <p id="timeLimitError" class="field-error" aria-live="polite"></p>
     </div>
     <label class="radio-option">
         <input type="checkbox" id="fixedBlockToggle">
-        <span>Daily time limit (minutes) - restrict AI access during set times (we will remind you 5 minutes prior)</span>
+        <span>Fixed time block - restrict AI access during set hours (reminder 5 min before)</span>
       </label>
       <div class="sub-option">
-        <span>Block after (minutes)</span>
         <input type="time" id="blockStart" /> <span>to</span>
           <input type="time" id="blockEnd" />
       </div>
@@ -235,8 +235,11 @@ function renderBlocks(): void {
     </div>
 
     <div class="button-row">
-      <button id="back">< Back</button>
-      <button id="next">Next ></button>
+      <button id="back" class="btn-secondary">< Back</button>
+      <div class="button-group-right">
+        <button id="skip" class="btn-secondary">Skip</button>
+        <button id="next">Next ></button>
+      </div>
     </div>
   `;
 
@@ -280,6 +283,11 @@ function renderBlocks(): void {
   const back = document.getElementById("back");
   if (back instanceof HTMLButtonElement) {
     back.onclick = prevStep;
+  }
+
+  const skip = document.getElementById("skip");
+  if (skip instanceof HTMLButtonElement) {
+    skip.onclick = nextStep;
   }
 
   const next = document.getElementById("next");

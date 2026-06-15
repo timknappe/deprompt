@@ -53,6 +53,7 @@ const fakeBrowser = {
       set: async (items: Record<string, unknown>) => {
         Object.assign(syncStore, items);
       },
+      onChanged: { addListener: () => undefined },
     },
     local: { get: async () => ({}), set: async () => undefined },
   },

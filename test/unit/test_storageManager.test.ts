@@ -8,13 +8,14 @@ import {
 } from "../../src/constants.js";
 
 // In-memory fake "browser" replacing webextension-polyfill for this file.
-// storageManager only touches: storage.sync, storage.local, alarms.create/clear.
+// storageManager only touches: storage.sync, storage.local, alarms.create/get/clear.
 
 type Bag = Record<string, unknown>;
 const syncStore: Bag = {};
 const localStore: Bag = {};
 const alarmCalls: { name: string; opts?: unknown }[] = [];
 const alarmClearCalls: string[] = [];
+const activeAlarms = new Map<string, { name: string }>();
 
 function pickKeys(store: Bag, keys: string | string[] | null | undefined): Bag {
   if (keys == null) return { ...store };
@@ -54,10 +55,12 @@ const fakeBrowser = {
   alarms: {
     create: (name: string, opts?: unknown) => {
       alarmCalls.push({ name, opts });
+      activeAlarms.set(name, { name });
     },
+    get: async (name: string) => activeAlarms.get(name),
     clear: async (name: string) => {
       alarmClearCalls.push(name);
-      return true;
+      return activeAlarms.delete(name);
     },
   },
 };
@@ -96,6 +99,7 @@ beforeEach(() => {
   for (const k of Object.keys(localStore)) delete localStore[k];
   alarmCalls.length = 0;
   alarmClearCalls.length = 0;
+  activeAlarms.clear();
 });
 
 describe("normalizeDateKey", () => {
@@ -434,6 +438,14 @@ describe("session timer", () => {
     expect(localStore["meta:runtime:provider"]).toBe("openai");
     expect(typeof localStore["meta:runtime:start"]).toBe("number");
     expect(localStore["meta:runtime:pendingMs"]).toBe(0);
+    expect(alarmCalls).toEqual([{ name: "syncTimer", opts: { periodInMinutes: 1 } }]);
+  });
+
+  test("startTimerForProvider does not recreate an existing syncTimer alarm", async () => {
+    // Recreating an alarm resets its clock; repeated session starts (e.g. on
+    // every MV3 service-worker restart) must not push the heartbeat back.
+    await startTimerForProvider("openai");
+    await startTimerForProvider("anthropic");
     expect(alarmCalls).toEqual([{ name: "syncTimer", opts: { periodInMinutes: 1 } }]);
   });
 

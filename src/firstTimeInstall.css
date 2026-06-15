@@ -16,20 +16,23 @@ body {
   color: #ddd;
   font-family: "Inter", sans-serif;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
-  overflow: hidden;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 main {
   width: 480px;
-  max-width: 90%;
+  max-width: 100%;
   background-color: #2a2a2a;
   border: 1px solid #333;
   border-radius: 16px;
-  padding: 30px 32px 40px;
+  padding: 24px 28px 32px;
   box-shadow: 0 0 18px rgba(0, 0, 0, 0.4);
   animation: fadeIn 0.3s ease;
 }
@@ -43,20 +46,22 @@ h1 {
 h2 {
   font-size: 1.3rem;
   margin-top: 0;
+  margin-bottom: 4px;
   color: #bbaaff;
 }
 
 .description {
   font-size: 0.95rem;
   color: #aaa;
-  margin-bottom: 24px;
+  margin-top: 4px;
+  margin-bottom: 16px;
 }
 
 .radio-group,
 #alt-radio-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .radio-option,
@@ -84,6 +89,7 @@ h2 {
 
 .sub-option {
   margin-left: 30px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -110,16 +116,48 @@ h2 {
 }
 
 .field-error {
-  margin: 4px 0 10px 30px;
+  margin: 3px 0 6px 30px;
   color: #ff8e8e;
   font-size: 0.84rem;
-  min-height: 1rem;
+  min-height: 0.9rem;
+}
+
+.optional-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #888;
+  background: #333;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 2px 6px;
+  vertical-align: middle;
+  margin-left: 6px;
 }
 
 .button-row {
   display: flex;
   justify-content: space-between;
-  margin-top: 30px;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.button-group-right {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: #888;
+  border: 1px solid #444;
+}
+
+.btn-secondary:hover {
+  background-color: #333;
+  color: #bbb;
+  transform: none;
 }
 
 button {

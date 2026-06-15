@@ -334,7 +334,7 @@ export async function renderProviderBreakdownChart(viewType: Views = "alltime"):
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: true,
+      animation: false,
       plugins: {
         legend: {
           position: "left",
@@ -508,15 +508,55 @@ function handleViewChange(event: Event): void {
   void updateViewDependentStats(currentViewType);
 }
 
+/**
+ * Re-reads all stored usage and re-renders every widget on the dashboard. Cheap
+ * because storage is local, so it's safe to call whenever the data may be stale
+ * (initial load, and each time the tab regains focus after the user has been
+ * off using an AI in another tab).
+ */
+async function refreshAll(): Promise<void> {
+  await Promise.all([
+    setStandardUsage(),
+    updateViewDependentStats(currentViewType),
+    updateCharts(currentViewType),
+    refreshBlockControls(),
+  ]);
+}
+
+// Coalesce the visibility and storage triggers below: switching back from an AI
+// tab can fire both within a few ms, and a late session-flush write can arrive
+// just after the visibility refresh, so a short debounce keeps it to one render.
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleRefresh(): void {
+  if (refreshTimer !== null) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    void refreshAll();
+  }, 150);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const radios = document.querySelectorAll<HTMLInputElement>('input[name="viewType"]');
   radios.forEach((radio) => {
     radio.addEventListener("change", handleViewChange);
   });
 
-  void setStandardUsage();
-  void updateViewDependentStats(currentViewType);
-  void updateCharts(currentViewType);
+  void refreshAll();
+});
+
+// Usage keeps accumulating in storage while the dashboard tab is hidden and the
+// user is off in an AI tab. Re-read when they return so the numbers aren't stale.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") scheduleRefresh();
+});
+
+// Switching directly from an AI tab races the background worker's session flush:
+// the visibility refresh above often reads storage before `finalizeSession` has
+// written the last slice. Re-reading on the storage write itself closes that gap
+// regardless of which fires first. Gated on visibility so per-tick writes while
+// the dashboard is hidden don't churn a tab nobody is looking at.
+browser.storage.sync.onChanged.addListener(() => {
+  if (document.visibilityState === "visible") scheduleRefresh();
 });
 
 async function setStandardUsage(): Promise<void> {
@@ -630,8 +670,4 @@ snooze_block_button.addEventListener("click", async () => {
     await setBlockToggle();
   }
   await refreshBlockControls();
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  void refreshBlockControls();
 });

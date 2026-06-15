@@ -138,8 +138,13 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
         const UI = await scheduleWindowUI();
         if (UI) {
           if (UI === "FixedBlockTime" || UI === "TimeLimit" || UI === "ManualBlock") {
-            injectBlockScreen(targetTabId);
+            await injectBlockScreen(targetTabId);
           } else if (UI === "DailyUsageReminder" || UI === "ContinuousUsageReminder" || UI === "BlockedSoonReminder") {
+            debugLog("alarms.onAlarm: injecting reminder", { targetTabId, UI });
+            // Record the reminder only after it actually rendered; a failed
+            // injection would otherwise suppress it for the whole cooldown.
+            await injectReminder(targetTabId, UI);
+
             const lastReminderStorage = await browser.storage.sync.get("meta:lastReminder");
 
             const lastReminder =
@@ -151,8 +156,6 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
             await browser.storage.sync.set({
               "meta:lastReminder": { ...lastReminder, [UI]: Date.now() },
             });
-            debugLog("alarms.onAlarm: injecting reminder", { targetTabId, UI });
-            injectReminder(targetTabId, UI);
           }
         }
       }

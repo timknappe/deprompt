@@ -216,11 +216,16 @@ export async function scheduleWindowUI(): Promise<WindowUiNotifications> {
     let secondsTillBlock: number | null = null;
     let reminderType: Reminder = null;
 
+    // Warn about whichever block hits first: a fixed blocker or the time limit.
     if (typeof nextBlockerTime === "number") {
       secondsTillBlock = nextBlockerTime;
       reminderType = "BlockedSoonReminder";
-    } else if (tempUsage !== null) {
-      secondsTillBlock = Math.floor(tempUsage / 1000);
+    }
+    if (tempUsage !== null) {
+      const secondsTillLimit = Math.floor(tempUsage / 1000);
+      if (secondsTillBlock === null || secondsTillLimit < secondsTillBlock) {
+        secondsTillBlock = secondsTillLimit;
+      }
       reminderType = "BlockedSoonReminder";
     }
 

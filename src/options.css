@@ -148,6 +148,7 @@ input:focus {
 
 .field-hint {
   color: #888;
+  padding-top: 8px;
   font-size: 0.9rem;
 }
 
@@ -247,7 +248,9 @@ input:focus {
   line-height: 0;
   padding: 2px 6px;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
 }
 
 .custom-provider-row:hover .custom-provider-delete,
@@ -330,6 +333,9 @@ input:focus {
 }
 
 .dashboardLink {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
   width: 15%;
   position: fixed;
   padding: 0.5em;
