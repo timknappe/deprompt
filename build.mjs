@@ -13,6 +13,7 @@ const HTML_INPUTS = {
   options: R(__dirname, "src/options.html"),
   dashboard: R(__dirname, "src/dashboard.html"),
   firstTimeInstall: R(__dirname, "src/firstTimeInstall.html"),
+  permissionRequest: R(__dirname, "src/permission-request.html"),
   reminder: R(__dirname, "src/in-page/reminder.html"),
   blockedNotification: R(__dirname, "src/in-page/blocked_notification.html"),
 };

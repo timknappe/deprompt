@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Deprompt – Allow Provider</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: #161618;
+        color: #ddd;
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        height: 100vh;
+        padding: 16px;
+        text-align: center;
+      }
+      #origin { color: #aaa; word-break: break-all; }
+      button {
+        background: #7c4dff;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 20px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      button:hover { background: #6a3de0; }
+    </style>
+  </head>
+  <body>
+    <p>Allow Deprompt to track</p>
+    <p id="origin"></p>
+    <button id="allowBtn">Allow</button>
+    <script type="module" src="permission-request.js"></script>
+  </body>
+</html>

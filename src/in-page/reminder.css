@@ -77,6 +77,11 @@
   color: #aaa;
 }
 
+#deprompt-reminder-unique-flag #time-value {
+  font-weight: 600;
+  color: #ccc;
+}
+
 #deprompt-reminder-unique-flag #close-reminder-btn {
   display: inline-block;
   background-color: #7c4dff;

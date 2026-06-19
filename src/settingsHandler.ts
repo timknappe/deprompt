@@ -456,16 +456,43 @@ function wireProviderInteractions(): void {
   });
 }
 
+function requestPermissionViaPopup(origin: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const url = browser.runtime.getURL(`permission-request.html?origin=${encodeURIComponent(origin)}`);
+    void browser.windows.create({ url, type: "popup", width: 420, height: 120 });
+
+    function listener(message: unknown) {
+      if (
+        typeof message === "object" &&
+        message !== null &&
+        (message as Record<string, unknown>)["type"] === "permissionResult" &&
+        (message as Record<string, unknown>)["origin"] === origin
+      ) {
+        browser.runtime.onMessage.removeListener(listener);
+        resolve(Boolean((message as Record<string, unknown>)["granted"]));
+      }
+    }
+
+    browser.runtime.onMessage.addListener(listener);
+  });
+}
+
 async function activatePendingProvider(pending: CustomProvider): Promise<void> {
   // Honour the user gesture: open the site and ask for the host permission in the
   // same click handler so the browser shows its native allow/deny prompt.
   void browser.tabs.create({ url: customProviderNavigableUrl(pending.url) });
 
   let granted = false;
-  try {
-    granted = await browser.permissions.request({ origins: [pending.url] });
-  } catch (err) {
-    console.error("Custom provider permission request failed", err);
+  // Firefox only allows permissions.request() from a browser-action popup window,
+  // not from an options page opened as a tab. Open a dedicated popup for Firefox.
+  if (navigator.userAgent.includes("Firefox")) {
+    granted = await requestPermissionViaPopup(pending.url);
+  } else {
+    try {
+      granted = await browser.permissions.request({ origins: [pending.url] });
+    } catch (err) {
+      console.error("Custom provider permission request failed", err);
+    }
   }
   if (!granted) return;
 

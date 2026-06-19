@@ -287,7 +287,18 @@ function renderBlocks(): void {
 
   const skip = document.getElementById("skip");
   if (skip instanceof HTMLButtonElement) {
-    skip.onclick = nextStep;
+    skip.onclick = async () => {
+      blockToggle.checked = false;
+      fixedBlockToggle.checked = false;
+      timeLimitInput.disabled = true;
+      blockStart.disabled = true;
+      blockEnd.disabled = true;
+      await browser.storage.sync.set({
+        "settings:timeLimit": { enabled: false, minutes: 60 },
+        "settings:block:fixed": [],
+      });
+      nextStep();
+    };
   }
 
   const next = document.getElementById("next");

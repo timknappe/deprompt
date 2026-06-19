@@ -116,6 +116,34 @@ async function handleTabStateChange(tab: browser.Tabs.Tab): Promise<void> {
   }
 
   await startTimerForProvider(providerId);
+  await checkAndInjectWindowUI(tab.id);
+}
+
+// #endregion
+
+// #region Helpers
+
+async function checkAndInjectWindowUI(targetTabId: number): Promise<void> {
+  if (await isBlockPopupInjected(targetTabId)) return;
+  const UI = await scheduleWindowUI();
+  if (!UI) return;
+  if (UI === "FixedBlockTime" || UI === "TimeLimit" || UI === "ManualBlock") {
+    await injectBlockScreen(targetTabId);
+  } else if (UI === "DailyUsageReminder" || UI === "ContinuousUsageReminder" || UI === "BlockedSoonReminder") {
+    debugLog("checkAndInjectWindowUI: injecting reminder", { targetTabId, UI });
+    // Record the reminder only after it actually rendered; a failed
+    // injection would otherwise suppress it for the whole cooldown.
+    await injectReminder(targetTabId, UI);
+    const lastReminderStorage = await browser.storage.sync.get("meta:lastReminder");
+    const lastReminder =
+      typeof lastReminderStorage["meta:lastReminder"] === "object" &&
+      lastReminderStorage["meta:lastReminder"] !== null
+        ? lastReminderStorage["meta:lastReminder"]
+        : {};
+    await browser.storage.sync.set({
+      "meta:lastReminder": { ...lastReminder, [UI]: Date.now() },
+    });
+  }
 }
 
 // #endregion
@@ -135,31 +163,7 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
         lastActiveProviderId,
       });
 
-      if (!(await isBlockPopupInjected(targetTabId))) {
-        const UI = await scheduleWindowUI();
-        if (UI) {
-          if (UI === "FixedBlockTime" || UI === "TimeLimit" || UI === "ManualBlock") {
-            await injectBlockScreen(targetTabId);
-          } else if (UI === "DailyUsageReminder" || UI === "ContinuousUsageReminder" || UI === "BlockedSoonReminder") {
-            debugLog("alarms.onAlarm: injecting reminder", { targetTabId, UI });
-            // Record the reminder only after it actually rendered; a failed
-            // injection would otherwise suppress it for the whole cooldown.
-            await injectReminder(targetTabId, UI);
-
-            const lastReminderStorage = await browser.storage.sync.get("meta:lastReminder");
-
-            const lastReminder =
-              typeof lastReminderStorage["meta:lastReminder"] === "object" &&
-              lastReminderStorage["meta:lastReminder"] !== null
-                ? lastReminderStorage["meta:lastReminder"]
-                : {};
-
-            await browser.storage.sync.set({
-              "meta:lastReminder": { ...lastReminder, [UI]: Date.now() },
-            });
-          }
-        }
-      }
+      await checkAndInjectWindowUI(targetTabId);
     });
   }
 });

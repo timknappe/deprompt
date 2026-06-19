@@ -249,7 +249,7 @@ export async function scheduleWindowUI(): Promise<WindowUiNotifications> {
 
   const maxDailyUsage = await checkDailyUsageReminderDuration();
   if (maxDailyUsage !== null) {
-    if (maxDailyUsage - (await getTodayUsage(true)) < 0) {
+    if (maxDailyUsage - (await getTodayUsage(true)) <= 0) {
       if ((await checkLastReminderSent("DailyUsageReminder")) >= reminderCooldownSeconds) {
         return "DailyUsageReminder";
       }

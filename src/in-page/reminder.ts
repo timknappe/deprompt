@@ -22,7 +22,7 @@ import { REMINDER_CONTENT_SCRIPT } from "../constants.js";
     return;
   }
 
-  const timeReminder = document.getElementById("time-reminder")!;
+  const timeReminder = document.getElementById("time-value")!;
   const reasonText = document.getElementById("reason-text")!;
 
   const reminderType = (window as any).REMINDER_ARG;
@@ -33,25 +33,30 @@ import { REMINDER_CONTENT_SCRIPT } from "../constants.js";
   }
 
   let reasonMessage = "";
+  let timeLabel = "Time:";
   let countdownSeconds: number | null = null;
   let reverseReminderCountdown = false;
   switch (reminderType) {
     case "DailyUsageReminder":
       reasonMessage = "You have been using AI for a while today. Remember to take breaks!";
+      timeLabel = "Time using AI today:";
       countdownSeconds = (await getTodayUsage(true)) / 1000;
       reverseReminderCountdown = true;
       break;
     case "ContinuousUsageReminder":
       reasonMessage = "You've been using AI for a while. Remember to take breaks!";
+      timeLabel = "Time using AI:";
       countdownSeconds = (await getCurrentProviderDuration()) / 1000;
       reverseReminderCountdown = true;
       break;
     case "BlockedSoonReminder":
       reasonMessage = "You're about to reach one of your set blocked times";
+      timeLabel = "Time remaining:";
       countdownSeconds = await getTimeTillNextFixedBlockerValue();
       break;
     case "TimeLimit":
       reasonMessage = "You will reach your daily AI usage limit soon.";
+      timeLabel = "Time remaining:";
       countdownSeconds = (await getRemainingUsageTime(true))! / 1000;
       break;
     default:
@@ -61,6 +66,10 @@ import { REMINDER_CONTENT_SCRIPT } from "../constants.js";
   countdownSeconds == null ? (countdownSeconds = 0) : null;
   countdownSeconds = Math.floor(countdownSeconds);
   reasonText.textContent = reasonMessage;
+  const timeLabelEl = document.getElementById("time-reminder");
+  if (timeLabelEl) {
+    timeLabelEl.childNodes[0].textContent = timeLabel + " ";
+  }
 
   if (countdownSeconds === null) {
     console.warn("No countdown source available (no blockers and no usage limit).");
