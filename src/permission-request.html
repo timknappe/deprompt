@@ -4,38 +4,110 @@
     <meta charset="UTF-8" />
     <title>Deprompt – Allow Provider</title>
     <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
+      @font-face {
+        font-family: "Inter";
+        src: url("./fonts/Inter-VariableFont_opsz,wght.ttf") format("truetype");
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      ::selection {
+        background: #7c4dff;
+        color: #ffffff;
+      }
+
       body {
-        background: #161618;
-        color: #ddd;
-        font-family: system-ui, sans-serif;
-        font-size: 13px;
         display: flex;
         flex-direction: column;
         align-items: center;
+        gap: 14px;
+        background-color: #1e1e1e;
+        color: #ddd;
+        font-family: "Inter", sans-serif;
+        min-height: 100vh;
         justify-content: center;
-        gap: 12px;
-        height: 100vh;
-        padding: 16px;
+        padding: 20px;
         text-align: center;
       }
-      #origin { color: #aaa; word-break: break-all; }
-      button {
-        background: #7c4dff;
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        padding: 8px 20px;
-        font-size: 13px;
-        cursor: pointer;
+
+      .subheader {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
-      button:hover { background: #6a3de0; }
+
+      .subheader h2 {
+        font-size: 16px;
+        color: #ccc;
+        margin: 0;
+      }
+
+      .card {
+        background: rgba(40, 40, 40, 0.8);
+        border: 1px solid rgba(80, 80, 80, 0.6);
+        border-radius: 8px;
+        padding: 14px 16px;
+        width: 100%;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      }
+
+      .card p {
+        font-size: 13px;
+        color: #ccc;
+        margin: 0;
+      }
+
+      #origin {
+        margin-top: 8px;
+        color: #b3aaff;
+        font-size: 13px;
+        word-break: break-all;
+      }
+
+      .button {
+        width: 100%;
+        text-align: center;
+        padding: 8px 0;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        border: none;
+        font-family: "Inter", sans-serif;
+      }
+
+      .button.primary {
+        background-color: #7c4dff;
+        color: #fff;
+      }
+
+      .button.primary:hover {
+        background-color: #906bff;
+      }
     </style>
   </head>
   <body>
-    <p>Allow Deprompt to track</p>
-    <p id="origin"></p>
-    <button id="allowBtn">Allow</button>
+    <div class="subheader">
+      <img style="width: 40px; height: 40px" src="assets/icon128.png" alt="Logo" />
+      <h2>Deprompt</h2>
+    </div>
+
+    <div class="card">
+      <p>Allow Deprompt to track usage on this site?</p>
+      <p id="origin"></p>
+    </div>
+
+    <button id="allowBtn" class="button primary">Allow</button>
     <script type="module" src="permission-request.js"></script>
   </body>
 </html>

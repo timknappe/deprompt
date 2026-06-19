@@ -459,7 +459,7 @@ function wireProviderInteractions(): void {
 function requestPermissionViaPopup(origin: string): Promise<boolean> {
   return new Promise((resolve) => {
     const url = browser.runtime.getURL(`permission-request.html?origin=${encodeURIComponent(origin)}`);
-    void browser.windows.create({ url, type: "popup", width: 420, height: 120 });
+    void browser.windows.create({ url, type: "popup", width: 420, height: 380 });
 
     function listener(message: unknown) {
       if (
