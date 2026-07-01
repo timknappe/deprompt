@@ -21,7 +21,7 @@
     "@types/sinon-chrome": "^2.2.16",
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.20",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "webextension-polyfill": "^0.12.0"
   }
 }
