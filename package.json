@@ -15,7 +15,7 @@
     "happy-dom": "^20.10.2",
     "sinon-chrome": "^3.0.1",
     "vite": "^7.3.0",
-    "vite-plugin-static-copy": "^3.1.4"
+    "vite-plugin-static-copy": "^4.1.1"
   },
   "dependencies": {
     "@types/sinon-chrome": "^2.2.16",
